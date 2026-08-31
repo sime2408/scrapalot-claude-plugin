@@ -11,8 +11,11 @@
 
 set -euo pipefail
 
+# CLAUDE_PROJECT_DIR is only exported inside a Claude session; this script is
+# also run by hand from a terminal, where it would otherwise expand to nothing.
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-/opt/scrapalot}"
 RUNNER="/home/scrapalot/bin/scrapalot-devops-loop.sh"
-CRON_LOG="${CLAUDE_PROJECT_DIR}/.claude/devops-loop/cron.log"
+CRON_LOG="${PROJECT_DIR}/.claude/devops-loop/cron.log"
 CRON_EXPR="${CRON_EXPR:-0 23 * * *}"
 MARKER="# scrapalot-devops-loop"
 LINE="${CRON_EXPR} ${RUNNER} >> ${CRON_LOG} 2>&1 ${MARKER}"
@@ -38,4 +41,4 @@ fi
 echo "  $LINE"
 echo
 echo "Verify: crontab -l | grep devops-loop"
-echo "Logs:   tail -f ${CLAUDE_PROJECT_DIR}/.claude/devops-loop/loop.log"
+echo "Logs:   tail -f ${PROJECT_DIR}/.claude/devops-loop/loop.log"

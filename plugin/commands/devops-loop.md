@@ -89,8 +89,8 @@ For each error (stop after 3 successful PRs):
 
 2. **Branch on the verdict** (always clean up `work_dir` when not shipping):
    - `expected_exception` / `cannot_reproduce` → record handled, move on:
-     `bash devops-loop/scripts/record-error.sh <sig> wontfix "<short reason>"`;
-     then `bash devops-loop/scripts/cleanup-work.sh <work_dir>` (if one was made).
+     `bash ${CLAUDE_PLUGIN_ROOT}/scripts/devops-loop/record-error.sh <sig> wontfix "<short reason>"`;
+     then `bash ${CLAUDE_PLUGIN_ROOT}/scripts/devops-loop/cleanup-work.sh <work_dir>` (if one was made).
    - `too_risky` → `record-error.sh <sig> escalated "<reason>"`; add a line under
      `## Backlog / escalated` in STATE.md; `cleanup-work.sh <work_dir>`.
    - `real_defect` → go to verify.
@@ -109,7 +109,7 @@ For each error (stop after 3 successful PRs):
      hit the same objection**, which means the loop is out of ideas and a human
      should look. Only then escalate and discard:
      `record-error.sh <sig> escalated "verifier rejected twice: <reason>"`; add
-     to STATE Backlog; `bash devops-loop/scripts/cleanup-work.sh <work_dir>`.
+     to STATE Backlog; `bash ${CLAUDE_PLUGIN_ROOT}/scripts/devops-loop/cleanup-work.sh <work_dir>`.
 
      Never a round cap beyond that rule — "three tries and ship it" is how a
      symptom fix gets merged. And never ship on a reject because the loop is
@@ -136,7 +136,7 @@ For each error (stop after 3 successful PRs):
    - **Never** `gh pr merge`. Merge is the human's call.
    - `record-error.sh <sig> pr_open "<subproject>#<num> — <one line>"`.
    - Add to STATE `## Recently shipped PRs` (newest first).
-   - `bash devops-loop/scripts/cleanup-work.sh <work_dir>` (the branch is safe on
+   - `bash ${CLAUDE_PLUGIN_ROOT}/scripts/devops-loop/cleanup-work.sh <work_dir>` (the branch is safe on
      the remote now; the local clone is disposable).
 
 5. **Timeline:** append one line to STATE.md `## Timeline` for this error:
