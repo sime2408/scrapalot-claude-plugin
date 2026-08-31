@@ -37,7 +37,11 @@ import re
 import sys
 from pathlib import Path
 
-WORKSPACE = Path(__file__).resolve().parents[2]  # /opt/scrapalot
+import os
+
+# Not derived from __file__: this script ships with the plugin, whose install
+# directory is nowhere near the workspace it lints.
+WORKSPACE = Path(os.environ.get("CLAUDE_PROJECT_DIR", "/opt/scrapalot"))
 
 SUBPROJECTS = {
     "chat": "scrapalot-chat",

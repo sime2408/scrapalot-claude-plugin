@@ -14,7 +14,11 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOOP_DIR="$(cd "$HERE/.." && pwd)"
+# State lives in the project, not next to this script: the script ships with the
+# plugin and is replaced on every update, so deriving the ledger from its own
+# location silently pointed at an empty directory once the bundle moved.
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-/opt/scrapalot}"
+LOOP_DIR="$PROJECT_DIR/.claude/devops-loop"
 SEEN_FILE="${SEEN_FILE:-$LOOP_DIR/seen-errors.jsonl}"
 
 sig="${1:?signature required}"

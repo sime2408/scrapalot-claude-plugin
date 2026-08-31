@@ -28,7 +28,8 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DRIVER = os.path.join(HERE, "rag_chat_driver.py")
-LEDGER = os.path.join(os.path.dirname(HERE), "runs", "manual_coverage_ledger.json")
+PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", "/opt/scrapalot")
+LEDGER = os.path.join(PROJECT_DIR, ".claude", "rag-test", "runs", "manual_coverage_ledger.json")
 ADMIN = "ad93054b-635b-47b0-b6f4-7c7e06989c4c"
 WS = "0ebf2e09-7198-4b7a-a100-87b6dc969387"
 COL = "5eeec701-511d-4f85-b8b5-6cbcd64e4467"  # anthropology (rich corpus)

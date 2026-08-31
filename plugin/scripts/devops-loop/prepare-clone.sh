@@ -21,7 +21,12 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORK_ROOT="$(cd "$HERE/.." && pwd)/work"
+# State lives in the project, not next to this script: the script ships with the
+# plugin and is replaced on every update, so deriving the ledger from its own
+# location silently pointed at an empty directory once the bundle moved.
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-/opt/scrapalot}"
+LOOP_DIR="$PROJECT_DIR/.claude/devops-loop"
+WORK_ROOT="$LOOP_DIR/work"
 repo="${1:?repo name required (scrapalot-chat|scrapalot-backend|scrapalot-ui|scrapalot-gw)}"
 
 case "$repo" in

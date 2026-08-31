@@ -23,7 +23,11 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOOP_DIR="$(cd "$HERE/.." && pwd)"
+# State lives in the project, not next to this script: the script ships with the
+# plugin and is replaced on every update, so deriving the ledger from its own
+# location silently pointed at an empty directory once the bundle moved.
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-/opt/scrapalot}"
+LOOP_DIR="$PROJECT_DIR/.claude/devops-loop"
 SEEN_FILE="${SEEN_FILE:-$LOOP_DIR/seen-errors.jsonl}"
 SCAN_WINDOW_MIN="${SCAN_WINDOW_MIN:-60}"
 SINCE="${SCAN_WINDOW_MIN}m"
@@ -96,6 +100,14 @@ fi
 
 # --- load already-handled signatures --------------------------------------
 declare -A SEEN
+# A missing ledger is not an empty one. Reading it as "nothing handled yet"
+# reports every known signature as new, which is how a loop re-opens PRs for
+# errors it already marked wontfix.
+if [ ! -f "$SEEN_FILE" ]; then
+  echo "error-scan: seen-errors ledger not found at $SEEN_FILE" >&2
+  echo "error-scan: refusing to report every signature as new; set CLAUDE_PROJECT_DIR or SEEN_FILE" >&2
+  exit 2
+fi
 if [ -f "$SEEN_FILE" ]; then
   while IFS= read -r s; do
     [ -n "$s" ] && SEEN["$s"]=1

@@ -61,7 +61,9 @@ if not PW:
     # .claude/settings.local.json env block, which stays off git.
     sys.exit("TEST_PASSWORD is not set — export it (or add it to .claude/settings.local.json env) before running the driver.")
 HERE = os.path.dirname(os.path.abspath(__file__))
-RUNS = os.path.join(os.path.dirname(HERE), "runs")
+# Run artefacts belong to the project and must survive a plugin update.
+PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", "/opt/scrapalot")
+RUNS = os.path.join(PROJECT_DIR, ".claude", "rag-test", "runs")
 ADMIN_ID = os.environ.get("RAG_TEST_USER_ID", "ad93054b-635b-47b0-b6f4-7c7e06989c4c")
 
 # Status codes the UI renders as a hard turn failure (chat-message.tsx KNOWN_STATUS_CODES).
