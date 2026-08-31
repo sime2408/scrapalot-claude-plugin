@@ -244,7 +244,7 @@ def cmd_stop_hook() -> int:
             "Start it now with /scrapalot:book; do not end the turn and do not "
             "schedule a wakeup, this hook is the pacing. "
             f"The mandate and the five end-state conditions are in {GOAL}. "
-            "To stop: python3 <plugin>/scripts/sweep-next.py disarm."
+            f"To stop: python3 {Path(__file__).resolve()} disarm."
         )
         print(json.dumps({"decision": "block", "reason": reason}))
         return 0
