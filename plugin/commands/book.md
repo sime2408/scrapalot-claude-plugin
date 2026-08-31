@@ -299,9 +299,10 @@ idea we do not have, naming what was tried — that is a result. `2cdd2f36`'s
 missing chapters 7 and 10 are the standing example.
 
 **What the loop may do alone:** source fixes on a branch, scans, tests, PRs,
-re-running the critic. **What it must ask for:** any reprocess, any content
-edit, any Neo4j write, any merge — asked under the ten-minute rule below, which
-says how to ask and when a question may answer itself. A gauntlet that reprocesses a book
+re-running the critic, and **merging its own PR** under the five conditions in
+"Merging" below. **What it must ask for:** any reprocess, any content edit, any
+Neo4j write — asked under the ten-minute rule below, which says how to ask and
+when a question may answer itself. A gauntlet that reprocesses a book
 forty times to win its own comparison has burned the book.
 
 ## Phase 5 — report and STOP
@@ -327,6 +328,46 @@ not settle.
 
 Then stop. Do not offer to run the next book unprompted. Do not start fixing
 systemic issues discovered along the way. The user decides what happens next.
+
+## Merging — yours to do, under five conditions
+
+Set by the owner on 2026-08-31, replacing the older "never merge, the owner
+merges": *"i sam mergeaš pr-ove kad ih auto review pregleda, max 5 rundi, kad se
+poprave critical i major bugovi."*
+
+Merge the PR yourself when **all five** hold:
+
+1. **The auto-review bot has actually reviewed it.** Not "CI passed" — the review
+   job has run and left its findings. A PR nobody reviewed is not ready because
+   it merges on one pair of eyes, and the whole point of the review is that they
+   are not yours. The bot cannot see CI status and will ask you to confirm it;
+   confirm it explicitly.
+2. **Every critical and major finding is fixed.** Minor remarks, nits and
+   suggestions may stay open — say in the PR which ones you left and why.
+3. **CI is green** on the commit you are merging, including any commit the bot
+   pushed into your branch. Merging red CI is not a judgement call.
+4. **It took at most 5 review→fix rounds.** A fifth round that still has a
+   critical or major finding open is the signal to **stop and hand it over** —
+   five rounds without convergence means the disagreement is about something the
+   loop is not settling, and merging anyway would be the loop overruling a
+   reviewer by exhaustion.
+5. **No other book is made worse.** The owner's words, 2026-08-31: *"svaka
+   promjena ne smije donjeti regresiju na ostale knjige."* This is not "the
+   average improved" and not "net positive" — it is **zero books degraded**, and
+   you only know it by scanning the corpus in both directions and reading the
+   degraded cases one by one. A change that fixes the book in front of you and
+   costs one other book is refused, not traded off. The corpus already paid for
+   this rule twice in one day: a filter whose first version deleted a printed
+   copyright footer from 525 pages, and the review's own widening of it, which
+   started eating a colophon, an index entry and the phrase "running headlong
+   into vice". Both were caught only because the scan was re-run and the removals
+   were read, not summarised.
+
+Say in the report which round it merged on. The bot pushes commits into your
+branch — keep them and correct on top, never force-overwrite; re-run the corpus
+scan after its changes, because a widened pattern can silently start eating real
+text (that happened on #326, where the review's correct fix opened a second hole
+the scan caught).
 
 ## Fixes — what may be applied without asking
 
