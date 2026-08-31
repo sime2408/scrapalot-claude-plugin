@@ -1,0 +1,24 @@
+{
+  "name": "scrapalot",
+  "displayName": "Scrapalot AI Toolkit",
+  "version": "1.0.0",
+  "description": "The command, skill, agent and hook set that runs the Scrapalot AI stack: per-book corpus audits, RAG answer grading, an autonomous DevOps fix loop, competitive research to shipped feature, and the per-stack code-quality passes for the Python AI backend, the Kotlin backend and the React frontend.",
+  "author": {
+    "name": "Scrapalot",
+    "url": "https://scrapalot.app"
+  },
+  "homepage": "https://scrapalot.app",
+  "license": "MIT",
+  "keywords": [
+    "rag",
+    "knowledge-graph",
+    "document-processing",
+    "devops",
+    "code-quality",
+    "competitive-analysis",
+    "testing",
+    "neo4j",
+    "pgvector"
+  ],
+  "hooks": "./hooks/hooks.json"
+}

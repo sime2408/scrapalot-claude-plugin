@@ -1,0 +1,31 @@
+{
+  "description": "Scrapalot guardrails. Every one is gated on a signal from the run it protects and is a silent no-op otherwise, so an ordinary session never sees them.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/postprocess_guardrail.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/devops_loop_guardrail.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/gates_stop_guardrail.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

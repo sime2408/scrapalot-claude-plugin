@@ -1,0 +1,308 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "scrapalot",
+  "description": "Claude Code tooling for the Scrapalot AI stack — corpus audits, RAG grading, an autonomous DevOps fix loop, and the per-stack code-quality passes.",
+  "owner": {
+    "name": "Scrapalot",
+    "url": "https://scrapalot.app"
+  },
+  "metadata": {
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "scrapalot",
+      "displayName": "Scrapalot AI Toolkit",
+      "description": "The command, skill, agent and hook set that runs the Scrapalot AI stack: per-book corpus audits, RAG answer grading, an autonomous DevOps fix loop, competitive research to shipped feature, and the per-stack code-quality passes for the Python AI backend, the Kotlin backend and the React frontend.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Scrapalot",
+        "url": "https://scrapalot.app"
+      },
+      "homepage": "https://scrapalot.app",
+      "repository": "https://github.com/sime2408/scrapalot-claude-plugin",
+      "license": "MIT",
+      "keywords": [
+        "rag",
+        "knowledge-graph",
+        "document-processing",
+        "devops",
+        "code-quality",
+        "competitive-analysis",
+        "testing",
+        "neo4j",
+        "pgvector"
+      ],
+      "category": "development",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/sime2408/scrapalot-claude-plugin.git",
+        "path": "plugin",
+        "ref": "main"
+      },
+      "metadata": {
+        "counts": {
+          "commands": 17,
+          "skills": 14,
+          "agents": 15,
+          "hooks": 3
+        },
+        "components": {
+          "commands": [
+            {
+              "name": "book",
+              "invoke": "/scrapalot:book",
+              "description": "ONE book, end to end — parse layer AND graph layer in a single pass, because parse defects are what usually break the graph. Never marches to a second book. Never skips silently."
+            },
+            {
+              "name": "chat-pr-review-comments",
+              "invoke": "/scrapalot:chat-pr-review-comments",
+              "description": "Read the review comments on a scrapalot-chat PR and fix the code until each one is resolved."
+            },
+            {
+              "name": "chat-pr-review",
+              "invoke": "/scrapalot:chat-pr-review",
+              "description": "Review a scrapalot-chat feature branch end to end and open the PR if it is not open yet."
+            },
+            {
+              "name": "chat-pre-commit",
+              "invoke": "/scrapalot:chat-pre-commit",
+              "description": "Run the scrapalot-chat pre-commit hooks (ruff, secrets baseline, file hygiene) on changed files only."
+            },
+            {
+              "name": "code-quality",
+              "invoke": "/scrapalot:code-quality",
+              "description": "Full-stack code quality audit — model providers, database schema, Redis sync, dead code across all services"
+            },
+            {
+              "name": "competitive-analysis-closed-source",
+              "invoke": "/scrapalot:competitive-analysis-closed-source",
+              "description": "Analyze closed-source SaaS competitors via their websites, docs, and feature pages"
+            },
+            {
+              "name": "competitive-analysis",
+              "invoke": "/scrapalot:competitive-analysis",
+              "description": "Analyze GitHub competitors — batch (auto-search by stars) OR single-repo strategy-first deep-dive when given a repo URL. Decides for itself whether the findings justify a PRD, and always states why."
+            },
+            {
+              "name": "competitive-impl",
+              "invoke": "/scrapalot:competitive-impl",
+              "description": "Implement the next feature from the research backlog — repairs misnamed research files, verifies the PRD against real code, interviews the owner in plain Croatian one feature at a time, then builds it on a branch with a PR. Multi-agent."
+            },
+            {
+              "name": "devops-loop",
+              "invoke": "/scrapalot:devops-loop",
+              "description": "Autonomous DevOps fix loop — runs nightly, scans containers for the day's new errors, root-cause + fix one at a time on a branch, verify, open a PR assigned to sime2408. Never pushes to main."
+            },
+            {
+              "name": "doc-sync",
+              "invoke": "/scrapalot:doc-sync",
+              "description": "Sync README documentation in docs/ folders with current codebase state"
+            },
+            {
+              "name": "improve-all",
+              "invoke": "/scrapalot:improve-all",
+              "description": "Sequential code improvement: one phase at a time, one repo at a time. After each phase: compile → commit → push → STOP and wait for user. Phases: Code Style → Architecture (analysis-only) → Docker Verify → Audit. (No lint phase — pre-commit hooks cover linting.)"
+            },
+            {
+              "name": "mobile-fix",
+              "invoke": "/scrapalot:mobile-fix",
+              "description": "Check and fix mobile layout issues for a given component"
+            },
+            {
+              "name": "pipeline-orchestrator",
+              "invoke": "/scrapalot:pipeline-orchestrator",
+              "description": "End-to-end document processing orchestrator with OOM protection"
+            },
+            {
+              "name": "postprocess-graph",
+              "invoke": "/scrapalot:postprocess-graph",
+              "description": "Graph-only audit of ONE book whose parse is already clean. Loops until a separate critic agrees the graph is the book's graph — never a round count."
+            },
+            {
+              "name": "postprocess-parse",
+              "invoke": "/scrapalot:postprocess-parse",
+              "description": "Parse-only audit of ONE book (no graph). Sweeps the corpus book by book so parser bugs get fixed at source before any graph is built."
+            },
+            {
+              "name": "rag-test",
+              "invoke": "/scrapalot:rag-test",
+              "description": "Drive ONE long chat session against a real book and grade every RAG answer (citations, search strategy, documents/web/llm routing, chat memory, source hallucination, graph, document_hierarchy). Two RAG-agent modes: auto (the agent routes itself) and manual (strategy pinned). Takes a free-text focus…"
+            },
+            {
+              "name": "ui-lint",
+              "invoke": "/scrapalot:ui-lint",
+              "description": "Run the scrapalot-ui linters and production build, fixing every error before the commit."
+            }
+          ],
+          "skills": [
+            {
+              "name": "code-improver",
+              "invoke": "/scrapalot:code-improver",
+              "description": "| Run the Scrapalot code improvement agent on scrapalot-chat (Python/FastAPI). Phases: 1=Code Style, 2=Architecture (analysis-only), 3=Docker Verify, 4=Audit. (No lint phase — the pre-commit hook runs ruff check + format on every commit.) Usage: /scrapalot:code-improver [1|2|3|4|style|architecture|…"
+            },
+            {
+              "name": "competitive-impl",
+              "invoke": "/scrapalot:competitive-impl",
+              "description": "> Turn finished research (competitive analyses, PRD backlog categories, partner PRDs) into shipped features. Owns three things the research skills do NOT: (1) the FILE-NAMING LAW — every research artifact has exactly one canonical path, and strays get renamed and relinked instead of quietly lost; (…"
+            },
+            {
+              "name": "dead-code-finder",
+              "invoke": "/scrapalot:dead-code-finder",
+              "description": "Identify unused code in scrapalot-chat (Python/FastAPI). Runs parallel agents per directory area, produces a candidate list with confidence levels. Output is for human review — NOT auto-deletion."
+            },
+            {
+              "name": "humanize-ai",
+              "invoke": "/scrapalot:humanize-ai",
+              "description": "> Turn any outbound draft (Discord/DM/email/comment) into something a person will actually read. Removes AI style AND AI conversational behavior: retelling the reader their own message, flattery, process narration, scaffolding sentences, commitments the sender never approved, and replies that carry…"
+            },
+            {
+              "name": "i18n-translator",
+              "invoke": "/scrapalot:i18n-translator",
+              "description": "Use this skill when adding or updating translations for Scrapalot UI. This includes adding new translation keys, translating UI text to multiple languages (English, Croatian, etc.), maintaining translation consistency, and ensuring all language files are kept in sync."
+            },
+            {
+              "name": "landing-design",
+              "invoke": "/scrapalot:landing-design",
+              "description": "Use this skill when designing or building PUBLIC marketing/landing pages for Scrapalot (home, about, contact, buy-license, and src/components/landing). Pushes for art-directed, distinctive, motion-rich pages and breaks the generic-AI-UI defaults — adapted to Scrapalot's real stack (Framer Motion +…"
+            },
+            {
+              "name": "langchain",
+              "invoke": "/scrapalot:langchain",
+              "description": "LangChain v1.x reference for the Scrapalot Python AI backend — APIs, migration guides and RAG/agentic patterns, backed by a scraped copy of the current docs. Use when writing or changing LangChain code in scrapalot-chat."
+            },
+            {
+              "name": "okf",
+              "invoke": "/scrapalot:okf",
+              "description": "Rules for reading, writing, and validating Open Knowledge Format (OKF v0.1) bundles in Scrapalot — the corpus collection export and the second-brain export. Use when touching anything under src/main/service/knowledge_export/, when adding a new export surface, or when a user asks whether a bundle is…"
+            },
+            {
+              "name": "pydantic-ai",
+              "invoke": "/scrapalot:pydantic-ai",
+              "description": "Pydantic AI agent reference for the Scrapalot Python AI backend — creating, wiring and testing agents in the RAG pipeline, backed by a scraped copy of the current docs. Use when adding or changing a deep-research or RAG agent in scrapalot-chat."
+            },
+            {
+              "name": "rag-strategy-developer",
+              "invoke": "/scrapalot:rag-strategy-developer",
+              "description": "Use this skill when developing new RAG (Retrieval Augmented Generation) strategies, orchestrators, or chunking methods for the Scrapalot-Chat project. This includes implementing new retrieval strategies, optimizing existing ones, adding orchestrators, or creating custom chunking approaches based on…"
+            },
+            {
+              "name": "seo-optimizer",
+              "invoke": "/scrapalot:seo-optimizer",
+              "description": "Use this skill when optimizing public-facing pages (about, pricing, home, sign-up) for search engines. Focus on making Scrapalot discoverable for researchers in spirituality, consciousness studies, metaphysics, and non-mainstream science. Includes meta tags, structured data, semantic HTML, and cont…"
+            },
+            {
+              "name": "startup-validator",
+              "invoke": "/scrapalot:startup-validator",
+              "description": "Use this skill when brainstorming, validating, or inventing unique features for Scrapalot focused on spirituality research, consciousness studies, metaphysics, and non-mainstream science. Provides deep analysis of competitive advantages, market positioning, and innovative feature ideas that differe…"
+            },
+            {
+              "name": "tech-debt-analyzer",
+              "invoke": "/scrapalot:tech-debt-analyzer",
+              "description": "Use this skill when analyzing technical debt in the Scrapalot-Chat Python/FastAPI codebase. Identifies code smells, RAG strategy inefficiencies, database design issues, missing tests, async/await anti-patterns, dependency problems, and creates comprehensive technical debt documentation."
+            },
+            {
+              "name": "ui-component-developer",
+              "invoke": "/scrapalot:ui-component-developer",
+              "description": "Use this skill when building or modifying React components for the Scrapalot product UI (chat, notes, research, settings, knowledge, admin) using Radix UI primitives, CVA, TailwindCSS, Framer Motion and TypeScript. Encodes the real design system, the hard-won layout/Radix gotchas, and the Chrome-fi…"
+            }
+          ],
+          "agents": [
+            {
+              "name": "backend-code-improver",
+              "invoke": "scrapalot:backend-code-improver",
+              "description": "| Systematic code improvement agent for scrapalot-backend (Kotlin / Spring Boot). Runs ONE phase at a time: Code Style → Architecture → Docker Verify → Audit. There is NO separate lint phase — ktlint is a gradle task; a manual lint pass uses the SAFE LOCAL GRADLE pattern below. After each code-chan…"
+            },
+            {
+              "name": "chat-code-improver",
+              "invoke": "scrapalot:chat-code-improver",
+              "description": "| Systematic code improvement agent for scrapalot-chat (Python/FastAPI). Runs ONE phase at a time: Code Style → Architecture → Docker Verify → Audit. (There is no lint phase — the pre-commit hook runs ruff check + format on every commit, so the repo is lint-clean by construction.) After each code-c…"
+            },
+            {
+              "name": "devops-fixer",
+              "invoke": "scrapalot:devops-fixer",
+              "description": "| MAKER agent for the autonomous DevOps fix loop. Given ONE harvested error (signature + sample + source container), it investigates the root cause, decides whether it is a real defect or an expected exception, and — only for real defects — applies a minimal root-cause fix on a feature branch in th…"
+            },
+            {
+              "name": "devops-verifier",
+              "invoke": "scrapalot:devops-verifier",
+              "description": "| READ-ONLY verifier for the autonomous DevOps fix loop. Given a subproject repo and the branch a fixer committed, it independently reviews the diff against the loop's GOAL and the subproject's rules, then votes APPROVE or REJECT. It never edits, commits, pushes, or merges. \"Don't grade your own ho…"
+            },
+            {
+              "name": "pipeline-orchestrator",
+              "invoke": "scrapalot:pipeline-orchestrator",
+              "description": "| End-to-end document processing orchestrator with OOM protection. Monitors upload → parse → chunk → embed → Neo4j graph → RAG quality. Tracks logs across ALL containers (gw, backend, chat, workers). Automatically detects OOM kills, disk pressure, and adapts processing. **When to use**: - Document…"
+            },
+            {
+              "name": "postprocess-graph",
+              "invoke": "scrapalot:postprocess-graph",
+              "description": "| Graph-only auditor. Runs AFTER `/scrapalot:postprocess-parse` has cleared a book. Validates the Neo4j layer: `Workspace → Collection → Book → Chapter → Section → Chunk` reachability, `(Book)-[:MENTIONS]->(Entity)` count and quality, `(Chunk)-[:REFERENCES]->(Entity)` chunk-level density, `(Entity)…"
+            },
+            {
+              "name": "postprocess-parse",
+              "invoke": "scrapalot:postprocess-parse",
+              "description": "| Per-book PARSE auditor. Each invocation EXHAUSTIVELY audits and fixes ONE book's parser / chunker / embedding / document-metadata layer — everything that does NOT touch Neo4j. Validates that pgvector chunks faithfully reflect `documents.content`, that chapter detection produced clean titles, that…"
+            },
+            {
+              "name": "prd-auditor",
+              "invoke": "scrapalot:prd-auditor",
+              "description": "| READ-ONLY ground-truth checker for the competitive-implementation loop. Given ONE group of proposed features from a research document, it checks each against the actual code in scrapalot-chat / scrapalot-backend / scrapalot-ui / scrapalot-gw and returns an evidence-backed state plus the five deci…"
+            },
+            {
+              "name": "prd-builder",
+              "invoke": "scrapalot:prd-builder",
+              "description": "| MAKER agent for the competitive-implementation loop. Given ONE feature the owner has approved, with every branch decision already answered, it implements that feature in an isolated git worktree of the right subproject, writes the integration and end-to-end tests, verifies them, and commits. It d…"
+            },
+            {
+              "name": "prd-cartographer",
+              "invoke": "scrapalot:prd-cartographer",
+              "description": "| READ-ONLY mapper for the competitive-implementation loop. Sweeps the whole workspace for research artifacts (competitive analyses, PRD backlog categories, partner and infrastructure PRDs), checks every one against the file-naming law, and returns the open queue, the half-open items, the misnamed…"
+            },
+            {
+              "name": "prd-explainer",
+              "invoke": "scrapalot:prd-explainer",
+              "description": "| Writes the plain-Croatian decision card for ONE feature, from the auditor's technical findings. It exists because the orchestrator holds the technical context and leaks it: the owner has never read the analysis, the audit or the logs, and cannot decide on codenames, file paths or machine-learning…"
+            },
+            {
+              "name": "prd-reviewer",
+              "invoke": "scrapalot:prd-reviewer",
+              "description": "| READ-ONLY reviewer for the competitive-implementation loop. Given the worktree, the branch a builder committed, and the scope the owner approved, it independently reviews the diff against that scope and the subproject's rules, then votes APPROVE or REJECT. It never edits, commits, pushes or merge…"
+            },
+            {
+              "name": "prompt-tuner",
+              "invoke": "scrapalot:prompt-tuner",
+              "description": "| MAKER agent for the RAG prompt-calibration loop. Given ONE graded defect that the grader attributed to generation (not retrieval), it finds the prompt key responsible, writes the smallest principle-level edit that fixes the defect class, applies it through the driver (atomic, backed up, live-relo…"
+            },
+            {
+              "name": "rag-tester",
+              "invoke": "scrapalot:rag-tester",
+              "description": "| Driver + quality grader for /scrapalot:rag-test. Given ONE question, an active chat session, and the picked book's ids, it asks the question through the real chat path (rag_chat_driver.py → SSE chat/completions), reads back the persisted signals, and grades the answer across the seven RAG-quality…"
+            },
+            {
+              "name": "test-runner",
+              "invoke": "scrapalot:test-runner",
+              "description": "| Unified test runner for ALL Scrapalot tests: Python pytest (integration), Playwright E2E (frontend), and Kotlin tests. Replaces separate e2e-integration-tester, e2e-frontend-tester, test-specialist, and ui-test-specialist. **When to use**: - Run integration tests (pytest inside Docker) - Run E2E…"
+            }
+          ],
+          "hooks": [
+            {
+              "event": "PreToolUse",
+              "matcher": "Bash",
+              "script": "postprocess_guardrail.sh"
+            },
+            {
+              "event": "PreToolUse",
+              "matcher": "Bash",
+              "script": "devops_loop_guardrail.sh"
+            },
+            {
+              "event": "Stop",
+              "matcher": "*",
+              "script": "gates_stop_guardrail.sh"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
