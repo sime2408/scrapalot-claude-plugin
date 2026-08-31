@@ -22,7 +22,7 @@ Update README documentation to match current code.
 2. **Mechanical lint pre-pass (run first — it builds your checklist).**
    Run the deterministic drift detector before reading anything by hand:
    ```bash
-   python3 .claude/scripts/doc_sync_lint.py <chat|backend|ui|gw|all>
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/doc-sync-lint.py <chat|backend|ui|gw|all>
    ```
    It extracts every source path each README cites, resolves it against ALL
    subproject roots (so a cross-repo citation is not a false positive), skips

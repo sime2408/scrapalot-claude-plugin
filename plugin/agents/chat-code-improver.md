@@ -373,7 +373,7 @@ runners share the same box.
 ## PHASE 3: DOCKER VERIFICATION
 
 ```bash
-bash /opt/scrapalot/scrapalot-chat/.claude/scripts/verify_docker.sh
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/chat-verify-docker.sh
 ```
 
 Checks: restart + health + imports + gRPC + workers + error scan.

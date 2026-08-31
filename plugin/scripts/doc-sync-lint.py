@@ -26,7 +26,7 @@ where they appear, with a grep to verify — it does NOT judge these, because a
 generic counter produces false positives. A human/agent verifies them.
 
 Usage:
-    python3 .claude/scripts/doc_sync_lint.py [chat|backend|ui|gw|all]
+    python3 ${CLAUDE_PLUGIN_ROOT}/scripts/doc-sync-lint.py [chat|backend|ui|gw|all]
 
 Exit code is always 0 — this is a report, not a gate.
 """

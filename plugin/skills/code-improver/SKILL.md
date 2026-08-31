@@ -40,7 +40,7 @@ ruff (check + format) on every commit, so the repo is lint-clean by construction
 **Step 3 — Dispatch the subagent.**
 
 Use the Agent tool with:
-- `subagent_type: "scrapalot:code-improver"`
+- `subagent_type: "scrapalot:chat-code-improver"`   (the Python agent; Kotlin is `scrapalot:backend-code-improver`)
 - `description: "scrapalot-chat Phase N — [phase name]"`
 - `prompt:` the phase instruction below
 
@@ -83,7 +83,7 @@ top 3-5 shortlist. NO code changes, NO commit — report and stop.
 **Phase 3 (Docker Verification):**
 ```
 Run Phase 3 (Docker Verification) on scrapalot-chat.
-Run: bash /opt/scrapalot/scrapalot-chat/.claude/scripts/verify_docker.sh
+Run: bash ${CLAUDE_PLUGIN_ROOT}/scripts/chat-verify-docker.sh
 If issues are found, fix them, then commit and push.
 Report results and stop.
 ```

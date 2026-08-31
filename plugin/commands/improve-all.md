@@ -106,14 +106,14 @@ or Phase 1-B for <sub-check>, skip the other sub-sections" so the agent scopes i
 
 For **scrapalot-chat**:
 ```
-subagent_type: "scrapalot:code-improver"  (from scrapalot-chat/.claude/agents/)
+subagent_type: "scrapalot:chat-code-improver"   (Python / FastAPI)
 Prompt: "Run Phase [N] on scrapalot-chat. [phase-specific instructions].
 After: compile-check → commit → push → STOP and report."
 ```
 
 For **scrapalot-backend**:
 ```
-subagent_type: "scrapalot:code-improver"  (from scrapalot-backend/.claude/agents/)
+subagent_type: "scrapalot:backend-code-improver"   (Kotlin / Spring Boot)
 Prompt: "Run Phase [N] on scrapalot-backend. [phase-specific instructions].
 After: compile-check → commit → push → STOP and report."
 ```
