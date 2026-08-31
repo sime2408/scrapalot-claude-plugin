@@ -190,11 +190,11 @@ def lint_claude_md(keys: list[str]) -> tuple[int, int]:
 def lint_subproject(key: str) -> tuple[int, int]:
     """Return (dead_count, readme_count) for one subproject."""
     sub = WORKSPACE / SUBPROJECTS[key]
-    docs = sorted(sub.glob("docs/README_*.md"))
+    docs = sorted(sub.glob("docs/*.md"))
     if not docs:
         return 0, 0
 
-    print(f"\n{'=' * 68}\n  {SUBPROJECTS[key]}  ({len(docs)} README files)\n{'=' * 68}")
+    print(f"\n{'=' * 68}\n  {SUBPROJECTS[key]}  ({len(docs)} doc files)\n{'=' * 68}")
 
     total_dead = 0
     all_counts: list[tuple[str, str, str]] = []  # (readme, number, noun)
@@ -202,9 +202,15 @@ def lint_subproject(key: str) -> tuple[int, int]:
     for md in docs:
         text = md.read_text(encoding="utf-8", errors="replace")
         cited = sorted({m.group(0) for m in PATH_RE.finditer(text)})
-        # A *_PLAN.md doc describes intended code — a citation to a file that
-        # doesn't exist yet is the plan, not drift. Report it, don't count it.
-        is_plan = "_PLAN" in md.name
+        # A doc describing intended code may cite files that do not exist yet:
+        # that is the plan, not drift. Decide from what the document DECLARES,
+        # not from its filename — README_SUBSCRIPTION_PLAN.md says "Status:
+        # Production Ready" and documents shipped behaviour, so the filename
+        # heuristic silently exempted real drift.
+        status = re.search(r"^\*\*Status\*\*:\s*(.+)$", text, re.M)
+        is_plan = bool(status) and re.search(
+            r"\b(proposed|draft|planned|not implemented|design)\b",
+            status.group(1), re.I) is not None
 
         dead, skipped = [], []
         for p in cited:
