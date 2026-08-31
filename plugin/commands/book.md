@@ -58,6 +58,19 @@ The two sibling commands remain valid for their own narrow jobs. This one is for
 **discovery**: one book, both layers, one report, root cause allowed to cross the
 boundary.
 
+## The standing goal — read it before Phase 0
+
+`${CLAUDE_PROJECT_DIR}/.claude/postprocess/GOAL.md` holds the mandate this
+command serves: every book stored the way the book actually is, ready for a
+graph. Read it every run — it is the file the owner edits to change what "done"
+means, and it carries the five conditions a book must meet, the guardrails that
+outrank the goal, and the standing open questions so you stop re-deriving them.
+
+Under `/loop`, that file is the loop's objective. **One book per tick, always** —
+the loop's job is to keep starting this command, not to make it audit more books
+per run. A defect found in one book is measured corpus-wide and fixed at source;
+it never becomes a sweep.
+
 ## Phase 0 — resolve exactly ONE book, and SHOW the choice
 
 Accept `$ARGUMENTS` as a document id, a title fragment, or a collection name.
@@ -348,6 +361,45 @@ in those words on 2026-08-27: *"ako ti ne odgovorim 10 min, ideš po svojoj
 preporuci."* A default you would not recommend is not a default, it is a stall
 wearing a timer.
 
+**TEST YOUR CLAIM BEFORE THE CLOCK CAN DECIDE IT.** Added 2026-08-31 on the
+owner's instruction: *"ti odlučuješ šta je najbolje ali tek nakon što testiraš
+svoju tvrdnju."* Every recommendation rests on a factual claim — *this fix helps
+more books than it hurts*, *this book's structure is wrong*, *this is the only
+copy left*. **You may not start the clock until that claim has been MEASURED**,
+and the measurement goes in the question you post, so the owner is deciding
+against evidence rather than against your confidence.
+
+What counts as having tested it:
+
+- a **corpus scan in both directions** for anything that changes stored text or
+  structure — how many documents improve, how many degrade, and the single worst
+  case, with the degraded ones read one by one, not summarised;
+- the **new test run against the pre-fix code** for a source fix, so you know it
+  guards something (a test that passes against the broken build guards nothing);
+- for "no better copy exists", the **search actually run** and its result named,
+  not an assumption about what is on archive.org;
+- for "this is a defect", the **number of documents it affects**, split by the
+  dimension that could make it a false positive — file type, language, whether
+  the book really does print that heading.
+
+If the claim cannot be measured in the time you have, that is not a licence to
+start the clock anyway. **Say what you could not measure and wait.** An untested
+default carried out by a timer is the failure this whole file exists to prevent,
+and a timer makes it worse than a wrong answer given in person: nobody was there
+to catch it.
+
+Three things measured on 2026-08-31 that would each have shipped as a confident,
+untested recommendation:
+
+| the claim | what measuring it did |
+|---|---|
+| "this filter removes the model's commentary" | its first version deleted a printed copyright footer from **525** pages across 3 books |
+| "over-fragmented chapters mark a defect" | its top entries were devotionals with 365 genuine one-chunk sections — the metric was discarded |
+| "every chunk on page 0 is a defect" | **2,459 of 3,973** were markdown, which has no pages; 62% of the number was not a defect |
+
+State in the report, and in the gate ledger's `EVIDENCE:` line, WHICH measurement
+backed a self-chosen default. "I judged it best" is not evidence; a number is.
+
 **Inside a `/loop` shift the loop's own wakeup IS the clock.** Do not add a
 separate `sleep` — ask, then arm `ScheduleWakeup` for 600 s with the loop's
 prompt. The next tick either finds an answer or carries out the recommendation.
@@ -359,8 +411,9 @@ there is no way to time it out. Instead:
 1. Write the question in chat as an ordinary message, in plain Croatian, with
    the options.
 2. **Say which option you will take if nobody answers, before you start the
-   clock.** The owner must never be surprised by what happened while they were
-   away.
+   clock, and show the measurement behind it.** The owner must never be
+   surprised by what happened while they were away, and must never have to take
+   your word for why.
 3. Start the clock in the same turn and end the turn:
    ```
    Bash(command="sleep 600", run_in_background=true, description="ten-minute answer window")
@@ -369,7 +422,9 @@ there is no way to time it out. Instead:
 5. The timer firing first means proceed with the option you announced. Say so in
    the next message: *"nije bilo odgovora 10 minuta, idem s <opcijom>"*, and put
    the same sentence in the report and in the gate ledger's `EVIDENCE:` line, so
-   the record shows a self-chosen answer and not an approved one.
+   the record shows a self-chosen answer and not an approved one. Name the
+   measurement in the same breath — *"idem s X; mjerenje koje to nosi je Y"* —
+   because a self-chosen answer is the one nobody checked.
 
 **When NOT to start the clock — stop and wait instead.** Use `AskUserQuestion`
 and block, with no timer, when:
