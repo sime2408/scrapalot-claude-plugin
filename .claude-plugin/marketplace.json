@@ -45,7 +45,7 @@
           "commands": 17,
           "skills": 14,
           "agents": 15,
-          "hooks": 3
+          "hooks": 4
         },
         "components": {
           "commands": [
@@ -299,6 +299,11 @@
               "event": "Stop",
               "matcher": "*",
               "script": "gates_stop_guardrail.sh"
+            },
+            {
+              "event": "Stop",
+              "matcher": "*",
+              "script": "postprocess_sweep_stop.sh"
             }
           ]
         }

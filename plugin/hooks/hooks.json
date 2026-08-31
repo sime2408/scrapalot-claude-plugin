@@ -23,6 +23,10 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/gates_stop_guardrail.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/postprocess_sweep_stop.sh"
           }
         ]
       }
