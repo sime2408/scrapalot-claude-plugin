@@ -51,6 +51,12 @@ MAX_BLOCKS_WITHOUT_PROGRESS = 25
 # produced a row in this long is not a sweep any more.
 STALE_HOURS = 12
 
+# How long the owning session may go without reaching a Stop before another
+# session may take the sweep over. Long enough that a book audit (many minutes of
+# tool calls between Stops) never loses its claim, short enough that a resumed
+# session picks the sweep up in one book rather than never.
+ADOPT_AFTER_MINUTES = 30
+
 # A Stop hook runs on the turn boundary, so the owner waits for it. The book
 # list query measures ~8s; 25 gives it room without ever becoming a hang.
 DB_TIMEOUT = 25
@@ -132,7 +138,7 @@ def _remaining() -> tuple[int, tuple[str, str, str] | None]:
 
 
 def cmd_arm(session: str) -> int:
-    _write_marker({"session": session, "armed_at": _now(),
+    _write_marker({"session": session, "armed_at": _now(), "last_block_at": _now(),
                    "rows_at_arm": _progress_rows(), "blocks": 0, "rows_at_last_block": _progress_rows()})
     remaining, first = _remaining()
     where = f"{first[2]} / {first[1]}" if first else "nothing left"
@@ -190,11 +196,37 @@ def cmd_stop_hook() -> int:
         session = str(payload.get("session_id", "unknown"))
         owner = marker.get("session")
         if owner and owner != session:
-            # Never wall a session that did not arm the sweep.
-            print(json.dumps({"systemMessage":
-                              f"sweep: a corpus sweep is armed by another session ({owner}) — "
-                              "not blocking you."}))
-            return 0
+            # Never wall a session that did not arm the sweep — but "did not arm
+            # it" and "is not the session that armed it" are different things, and
+            # conflating them silenced this hook for two hours on 2026-08-31.
+            #
+            # A `claude --resume` gets a NEW session id. The sweep was armed by
+            # b5a9e985, the connection dropped, the resumed session was b22d477e,
+            # and from then on every Stop took this branch and said nothing the
+            # agent could see. The sweep looked dead and nobody could tell why.
+            #
+            # So the owner has to keep proving it is alive. If it has not been
+            # blocked in ADOPT_AFTER_MINUTES, the marker is adopted by whoever
+            # reaches Stop next. A live parallel session blocks every few minutes
+            # and never goes quiet that long, so it keeps its claim; a session that
+            # has gone (resumed, exited, killed) hands the sweep over instead of
+            # taking it to the grave.
+            last = marker.get("last_block_at")
+            quiet_for = None
+            if last:
+                try:
+                    quiet_for = (datetime.now(timezone.utc) - datetime.fromisoformat(last)).total_seconds() / 60
+                except Exception:
+                    quiet_for = None
+            if quiet_for is not None and quiet_for < ADOPT_AFTER_MINUTES:
+                print(json.dumps({"systemMessage":
+                                  f"sweep: armed by another session ({owner}), which was active "
+                                  f"{quiet_for:.0f} min ago — not blocking you."}))
+                return 0
+            marker["session"] = session
+            marker["adopted_from"] = owner
+            marker["adopted_at"] = _now()
+            _write_marker(marker)
 
         # A sweep that stopped producing rows is over, whatever the marker says.
         try:
@@ -209,6 +241,7 @@ def cmd_stop_hook() -> int:
         blocks = 1 if rows != rows_at_last else blocks + 1
         marker["blocks"] = blocks
         marker["rows_at_last_block"] = rows
+        marker["last_block_at"] = _now()
         _write_marker(marker)
 
         if blocks > MAX_BLOCKS_WITHOUT_PROGRESS:
