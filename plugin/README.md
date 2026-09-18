@@ -23,8 +23,8 @@ and the rest. Agents appear in the @-mention typeahead as `scrapalot:rag-tester`
 
 | Kind | Count | Examples |
 |---|---|---|
-| Commands | 17 | `book`, `rag-test`, `devops-loop`, `competitive-impl`, `code-quality` |
-| Skills | 14 | `humanize-ai`, `okf`, `langchain`, `pydantic-ai`, `tech-debt-analyzer` |
+| Commands | 16 | `book`, `book-graph`, `rag-test`, `devops-loop`, `code-quality` |
+| Skills | 15 | `competitive-impl`, `humanize-ai`, `okf`, `langchain`, `comment-hygiene` |
 | Agents | 15 | `rag-tester`, `postprocess-parse`, `prd-builder`, `devops-fixer` |
 | Hooks | 3 | bulk-dispatch guard, DevOps-loop guard, gate-ledger Stop hook |
 
@@ -49,7 +49,7 @@ written inside the plugin. Run state lives in the project instead, under
 | Path | Written by |
 |---|---|
 | `gates/active/`, `gates/done/` | the gate ledger (`scripts/gate-check.py`) |
-| `postprocess/progress.txt` | `/scrapalot:postprocess-parse`, `/scrapalot:postprocess-graph` |
+| `postprocess/progress.txt` | `/scrapalot:postprocess-parse`, `/scrapalot:book-graph` |
 | `rag-test/STATE.md` | `/scrapalot:rag-test` |
 | `devops-loop/seen-errors.jsonl` | `/scrapalot:devops-loop` |
 | `competitive-analysis/analyzed_*.txt` | `/scrapalot:competitive-analysis` |

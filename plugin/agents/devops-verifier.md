@@ -8,7 +8,7 @@ description: |
   different agent from the one that wrote the fix.
 tools: Bash, Read, Grep, Glob
 disallowedTools: Edit, Write, NotebookEdit
-model: inherit
+model: sonnet
 ---
 
 You are the **verifier** in a maker/verifier loop. The fixer just wrote a change;

@@ -41,30 +41,37 @@ source and its tracker line.
 
 | Artifact | Canonical path |
 |---|---|
-| Competitor analysis (open **and** closed source) | `scrapalot-chat/docs/prd-competitive/competitive_analysis_<slug>.md` |
+| Competitor analysis, while it is being triaged (open **and** closed source) | `scrapalot-chat/docs/prd-competitive/competitive_analysis_<slug>.md` |
 | Rendered visual review surface | `scrapalot-chat/docs/prd-competitive/prd_<slug>_review.html` |
 | Review screenshots (local only, gitignored) | `scrapalot-chat/docs/prd-competitive/prd_<slug>_NN.png` |
 | Wireframes | `scrapalot-chat/docs/prd-competitive/wireframes/<slug>_<feature>.html` + `.png` |
-| Backlog category | `scrapalot-chat/docs/prd-scrapalot-mix/CATEGORY_NN_<AREA>.md` (`NN` two digits, `<AREA>` UPPER_SNAKE) |
+| Open work, by the area it changes | `scrapalot-chat/docs/prd-scrapalot-mix/CATEGORY_NN_<AREA>.md` (`NN` two digits, `<AREA>` UPPER_SNAKE) |
 | Partner codex | `scrapalot-chat/docs/prd-*-partner/README_NN_<AREA>.md` |
-| Index — competitive | `scrapalot-chat/docs/prd-competitive/README.md` |
-| Index — backlog | `scrapalot-chat/docs/prd-scrapalot-mix/README.md` |
 | Close-out log — competitive | `scrapalot-chat/docs/prd-competitive/resolved_analyses.txt` |
 | Close-out log — other Python-side PRDs | `scrapalot-chat/docs/resolved_prds.txt` |
 | Close-out log — Kotlin-side PRDs | `scrapalot-backend/docs/resolved_prds.txt` |
 | Analysis that did NOT earn a PRD | `scrapalot-chat/docs/prd-competitive/NO_PRD_LOG.md` |
 | Kotlin/gateway PRD | `scrapalot-backend/docs/README_PRD_<TOPIC>.md` |
-| Cross-repo status snapshot | `/opt/scrapalot/PRD_STATUS.md` |
+| Status board — every open item, one flag each | `scrapalot-chat/docs/PRD_STATUS.md` |
 | Source trackers | `${CLAUDE_PROJECT_DIR}/.claude/competitive-analysis/analyzed_repos.txt`, `analyzed_closed_source.txt` |
 | This tool's own state | `${CLAUDE_PROJECT_DIR}/.claude/competitive-impl/STATE.md` |
+
+**An analysis is a staging area, not a home.** A `competitive_analysis_<slug>.md` exists
+only while its features are being triaged. As soon as they are decided, its open items move
+into the `CATEGORY_NN_<AREA>.md` document that owns their area — they are Scrapalot features
+from then on, not notes about a competitor — and the analysis file is deleted with a record
+in `resolved_analyses.txt` naming where each item went. The nine open-work documents are
+grouped by area, not by the original category numbers, and item ids never change: an item
+keeps `2.8`, or `reducto #3`, wherever it lives, so every older record still resolves.
+There is no index file: `PRD_STATUS.md` is the index, and a document that is not linked from
+it is either new or lost.
 
 **Two companions are keyed differently — do not report these as violations:**
 
 - **The tracker line.** For a GitHub repo it is keyed by `owner/repo`
   (`lfnovo/open-notebook`), not by the slug — that is the tracker's own format and it is
   correct. Only closed-source products are keyed by `<slug>`. What the law requires is that
-  a line **exists** for every analysis; a missing line is the real defect (as of
-  2026-08-18: `agent_native_visual_plan` and `connect_your_agent` have none).
+  a line **exists** for every analysis; a missing line is the real defect.
 - **The rendered review HTML.** Required only for analyses written after the visual-plan
   discipline was adopted. Several older analyses were never rendered, and that is not a
   stray — report it as "not rendered" and leave it alone unless the analysis is being
@@ -93,12 +100,16 @@ it out to the canonical path before anything else; those directories get deleted
 
 Three sources, in this order of precedence:
 
-1. **`prd-competitive/*.md`** — live analyses. Each file with no matching entry in
-   `resolved_analyses.txt` is open work. Today that is the largest pile.
-2. **`prd-scrapalot-mix/CATEGORY_*.md`** — the numbered backlog. Each numbered feature
-   inside carries its own status; the file stays until every feature in it is done.
-3. **`prd-*-partner/`** and `scrapalot-backend/docs/README_PRD_*.md` — partner
-   and infrastructure PRDs. Only touched when the owner names them.
+1. **`docs/PRD_STATUS.md`** — the board. It is the queue: every open item, one flag each,
+   and the decisions that settle several items at once. Read it first, then the document it
+   points at for the item's evidence and plan.
+2. **`prd-scrapalot-mix/CATEGORY_*.md`** — where the open items live, grouped by area. A
+   document stays until every item in it is decided and every approved one is built.
+3. **`prd-competitive/competitive_analysis_*.md`** — an analysis still being triaged. There
+   is usually none: a triaged analysis has already moved into the documents above.
+4. **`prd-tts/README.md`**, **`prd-*-partner/`** and `scrapalot-backend/docs/README_PRD_*.md`
+   — the voice plan, partner codices and infrastructure PRDs. Only touched when the owner
+   names them.
 
 A **half-open** item is one where some features are decided and some are not, or where
 everything is decided and nothing is built. Those outrank untouched items — see §3.
@@ -347,7 +358,12 @@ The moment a decision lands, write it down. Two places, both immediately:
 1. **In the artifact itself** — a `## Decision Log (user review, YYYY-MM-DD)` table at the
    top of the analysis (the convention already used by several files), one row per
    feature: feature in plain words | decision | one-line reason | PR or commit once built.
-   For a backlog category, update that feature's status block in place.
+   For a backlog category, update that feature's status block in place. Every item also
+   carries one flag — `> **Status:**` under its heading and a row in the document's
+   `## Status` table — from the fixed set 🐞 BROKEN, ❓ NEEDS DECISION, 🔨 TO BUILD,
+   ⏸ DEFERRED, ✅ DONE, ⛔ DROPPED. Move the flag the moment the decision lands, and move
+   the item's row in `scrapalot-chat/docs/PRD_STATUS.md` with it; the board lives in git
+   because the host-only copy it replaces was lost.
 2. **In `STATE.md`** — the in-flight item, which features are decided, which are built,
    the branch and PR numbers, and where the interview stopped. This is what makes a
    context reset survivable.
@@ -417,11 +433,13 @@ the official `docs/README_*.md`. In one PR:
 2. Document what shipped in the internal `docs/README_*.md` that owns the area, and — only
    when it is user-facing and safe to publish — in the public `scrapalot-docs`. Never
    publish internal paths or security detail.
-3. Delete `competitive_analysis_<slug>.md`, its wireframes and its `prd_<slug>_review.html`.
-4. Remove or mark the row in `prd-competitive/README.md`; a row with no file behind it must
-   read CLOSED or DELIVERED, never point at a dead link.
+3. Delete `competitive_analysis_<slug>.md` and its `prd_<slug>_review.html`. Keep a wireframe
+   only while an item that is still open references it.
+4. Remove the item's rows from `PRD_STATUS.md` and correct the "At a glance" counts. When the
+   last item of a document goes, delete the document too.
 5. Update the tracker line: `<slug>|<date>|done + implemented`.
-6. Update `/opt/scrapalot/PRD_STATUS.md` — the counts and the "what to do next" list.
+6. Update `scrapalot-chat/docs/PRD_STATUS.md` in the same PR — remove the item's rows and
+   correct the "At a glance" counts.
 7. Clear the item from `STATE.md`.
 
 Dead links are how the last queue grew to look twice its real size. Check every relative

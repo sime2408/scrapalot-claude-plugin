@@ -14,6 +14,15 @@
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/devops_loop_guardrail.sh"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/comment_hygiene_guardrail.sh"
+          }
+        ]
       }
     ],
     "Stop": [

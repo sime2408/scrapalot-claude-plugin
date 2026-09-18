@@ -447,7 +447,7 @@ the one that produced the answer). High overlap = the user asked the same thing
 again = that answer failed them. Also weigh `feedback == -1`, `n_citations == 0`
 on a document question, and a next message that reads as a complaint. Judge WHY
 with the model; the metric only ranks WHERE to look — never keyword-match
-(`feedback_no_keyword_matching_in_prompts`). Only re-ask another user's question
+(`fb_keyword_matching`). Only re-ask another user's question
 against a collection the admin owns — reproduce the SHAPE, not their private
 data; admin's own failures replay directly. Harvested conversations are real user
 content: they stay under `rag-test/`, never in a commit, PR, or external surface.

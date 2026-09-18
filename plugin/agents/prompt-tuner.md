@@ -75,7 +75,7 @@ whose blast radius you have not measured.
 ## Step 2 — write the edit
 Rules that make an edit acceptable:
 1. **Principle, never case.** Never encode the specific question, drug, horse,
-   book, or word that failed. `feedback_no_keyword_matching_in_prompts` binds
+   book, or word that failed. `fb_keyword_matching` binds
    here: no keyword lists, no "if the user asks about X". State the general
    rule an intelligent reader would apply to the whole class.
 2. **Smallest change.** Prefer sharpening an existing rule over adding one. A

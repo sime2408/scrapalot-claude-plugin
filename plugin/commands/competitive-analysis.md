@@ -64,7 +64,7 @@ In this mode the goal is **not** "catalog every feature vs Scrapalot". It's: **u
 
 3. **Deep code analysis (3–5 parallel agents over SUBSYSTEMS, not files)**: split the repo into coherent subsystems and launch one Agent per subsystem (max 5 concurrent). Each agent reads ACTUAL source (not just READMEs), cites `file:symbol`, and returns: concrete mechanisms, the *non-obvious* design decisions, and how each maps onto Scrapalot's architecture (Python gRPC / Kotlin / React / Neo4j / pgvector / Celery / Redis Streams). **Every agent must also return the five Decision Gate fields** (`already_in_scrapalot` with a mandatory grep, `measurable_via`, `new_dependencies`, `reversibility`, `cheaper_substitute` — defined in Phase 3 step 5) for each mechanism it proposes we adopt; without them the gate in step 4.5 has nothing to weigh. If an agent dies on a transient API error (429/529), retry it once or do that subsystem inline.
 
-4. **Find the THESIS, not just the feature list.** A single-repo deep-dive must answer: *what is the one capability that makes this project matter, and what does adopting its spirit (not its code) unlock for Scrapalot?* Write this as a **"Strategic Direction for Scrapalot"** section near the top of the PRD — 3–5 plain-language paragraphs (Croatian-friendly framing per `feedback_plain_language_first.md`) that name the deeper bet, BEFORE the technical feature catalog. Examples of a thesis:
+4. **Find the THESIS, not just the feature list.** A single-repo deep-dive must answer: *what is the one capability that makes this project matter, and what does adopting its spirit (not its code) unlock for Scrapalot?* Write this as a **"Strategic Direction for Scrapalot"** section near the top of the PRD — 3–5 plain-language paragraphs (Croatian-friendly framing per `fb_plain_language_first.md`) that name the deeper bet, BEFORE the technical feature catalog. Examples of a thesis:
    - *Hermes Agent* → the thesis is the **agentic loop**: persistent memory + the flexibility to spin up purpose-built agents that run in a loop until a task is done. For Scrapalot that's the natural evolution of **deep research** and of **background Science research** — long-running autonomous investigations that keep working while the user focuses on something else, then surface results. Frame features around *that* direction (autonomy, memory, loop-until-done, background execution, self-improvement), not around "they have a Telegram bridge."
    - Always tie the thesis back to Scrapalot's existing moat (RAG, Neo4j graph, deep research, notes) and to where the user wants the product to go.
 
@@ -138,7 +138,7 @@ can see why. Reason tags: `already-shipped`, `unmeasurable`, `no-demand`, `out-o
 ### Surfacing it to the user
 
 Report the outcome in plain language before doing the work, per
-`feedback_plain_language_first.md`: what the project does that matters, what it would cost
+`fb_plain_language_first.md`: what the project does that matters, what it would cost
 us, and why it does or does not deserve a plan. When the gate is genuinely close — a real
 finding whose demand is unproven — use AskUserQuestion with the recommendation first,
 rather than defaulting to a PRD to look productive.
@@ -218,7 +218,7 @@ For each **relevant** repo, launch an Agent to do EXHAUSTIVE code analysis:
    orchestrator, does this — it is the one that read the code). An agent that returns a
    feature list without these fields has not finished; send it back:
    - `already_in_scrapalot` — `file:symbol` proving we ship it, or the literal `none`.
-     **The grep is mandatory before writing `none`** (`feedback_competitive_analysis.md` §3:
+     **The grep is mandatory before writing `none`** (`fb_competitive_analysis.md` §3:
      three separate "we don't have X" claims turned out false). Search
      `scrapalot-chat/src/main/`, `scrapalot-ui/src/components/`, `scrapalot-backend/src/main/`.
    - `measurable_via` — the existing harness that would show this working

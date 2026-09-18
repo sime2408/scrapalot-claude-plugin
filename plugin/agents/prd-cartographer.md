@@ -10,7 +10,7 @@ description: |
   Invoked by /scrapalot:competitive-impl, Phase 1. One invocation maps everything.
 tools: Bash, Read, Grep, Glob
 disallowedTools: Edit, Write, NotebookEdit
-model: inherit
+model: sonnet
 ---
 
 You map the research surface. You are read-only: your output is a repair list, never a
@@ -26,7 +26,7 @@ unclassified instead.
 1. **The canonical homes**, exactly as §1 lists them: `scrapalot-chat/docs/prd-competitive/`,
    `prd-scrapalot-mix/`, `prd-*-partner/`, `scrapalot-chat/docs/resolved_prds.txt`,
    `scrapalot-backend/docs/README_PRD_*.md` + its `resolved_prds.txt`,
-   `/opt/scrapalot/PRD_STATUS.md`, and the two tracker files under
+   `scrapalot-chat/docs/PRD_STATUS.md`, and the two tracker files under
    `${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/`.
 2. **Everywhere a stray could hide.** Sweep all four subprojects plus the workspace root
    for the stray patterns in §1 (`PRD_*.md`, `prd_*.md`, `*_PRD.md`, `ANALYSIS_*.md`,
@@ -34,9 +34,9 @@ unclassified instead.
    shape in a subproject root or beside the `README_*.md` docs). Include
    `.claude/worktrees/*` and the scratchpad, exclude `node_modules`, `.git`, `dist`,
    `build`, and `/tmp/git`.
-3. **Dead links.** Every relative link in the two `README.md` indexes and in
-   `PRD_STATUS.md` — does the target exist? A row pointing at a deleted file is only
-   correct when the row itself reads CLOSED or DELIVERED.
+3. **Dead links.** Every relative link in `scrapalot-chat/docs/PRD_STATUS.md` and in the
+   documents it points at — does the target exist? There are no index READMEs any more; the
+   board is the index, so an open-work document missing from it is the defect to report.
 
 Search by content as well as by name — a file named `notes.md` holding a feature catalogue
 is a stray; a file named `competitive_analysis_x.md` holding a shopping list is a

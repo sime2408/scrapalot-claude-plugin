@@ -11,7 +11,7 @@ description: |
   feature groups. Never invoked for a whole backlog at once.
 tools: Bash, Read, Grep, Glob
 disallowedTools: Edit, Write, NotebookEdit
-model: inherit
+model: sonnet
 ---
 
 You establish what is actually true in the code today. Everything you return is evidence

@@ -7,7 +7,7 @@ OPENED: <UTC timestamp>
 CWD: /opt/scrapalot
 
 <!--
-Format (full rules in ../CONTRACT.md — read it once, it is short):
+Format (full rules in .claude/plugin/gates/CONTRACT.md — read it once, it is short):
   - one checkbox per outcome, stated so a stranger could judge it
   - CHECK: a shell command that proves the outcome
     EXPECT: substring the output must contain, /regex/flags, or !negated

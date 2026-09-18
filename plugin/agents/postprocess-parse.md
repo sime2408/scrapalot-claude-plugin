@@ -1146,7 +1146,7 @@ sections still print with "—" as the value.
      C. Cat-F dispatched, queue zombie blocking:
         "revoke zombie task <tid>, then re-run"
      D. clean close, parse_done_clean only, no residual:
-        "graph audit: /scrapalot:postprocess-graph" OR
+        "graph audit: /scrapalot:book-graph" OR
         "re-run /scrapalot:postprocess-parse for next book"
    The agent picks branch D ONLY when ALL of the following hold:
      - the status logged to progress.txt is `parse_done_clean`

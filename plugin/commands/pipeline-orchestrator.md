@@ -41,7 +41,7 @@ Forbidden without explicit user approval (see Human Gates):
 - `docker restart <container>` — container restart drops in-flight requests and
   invalidates uploads-in-progress.
 - `docker update --cpus=N <container>` — runtime CPU re-allocation. Mass
-  recomputes can starve user-facing containers (`feedback_cpu_isolation_not_automatic`).
+  recomputes can starve user-facing containers (workspace `CLAUDE.md`, gotcha #10).
 - Worker scale-down or pause (`docker exec scrapalot-workers celery control
   cancel_consumer`).
 - Mass document delete / `DELETE FROM langchain_pg_embedding ...` rollbacks.
@@ -81,7 +81,7 @@ Pre-pipeline (run BEFORE dispatching the first doc):
 - Free RAM > 2 GB (`free -m | awk '/^Mem:/{print $7}'`).
 - CI deploy not in progress (`gh run list --limit 1 --json status`). If
   `in_progress` on a workflow that touches backend or chat, postpone the
-  pipeline start by 12 min (`feedback_no_heavy_admin_grpc_during_ci_deploy`).
+  pipeline start by 12 min (workspace `CLAUDE.md`, gotcha #12).
 - No `gh run` queued for the next 30 min that would `git reset --hard origin/main`
   the runner workspace (CI runners regularly wipe — defer mass operations to
   off-peak windows).
@@ -102,10 +102,10 @@ Post-pipeline:
   `deferred`); no `processing` left over.
 - `/scrapalot:postprocess-parse` audit re-runs on the docs that finished, to
   catch chunker pollution invisible from surface metrics
-  (`feedback_postprocess_methodology`).
+  (`fb_postprocess_methodology`).
 - End-of-batch source fixes committed in ONE commit per logical group; pushed
   to remote. Run `gh run list --limit 1` and wait for CI green before declaring
-  done (`feedback_cicd_before_next_phase`).
+  done (workspace `CLAUDE.md`, "Making code changes").
 - Final report: completed docs (with chunk counts), failed docs (with reasons +
   whether re-upload is needed), source patches applied (with commit SHAs),
   any `systemic_blockers` opened during the run.
@@ -113,7 +113,7 @@ Post-pipeline:
 Failure-mode rule: if Verification finds anything inconsistent (e.g. docs stuck
 in `processing`, missing chunks, broken hierarchy), do NOT auto-retry — surface
 to user with explicit Cat-F / Cat-H recommendation. Auto-retry hides root
-causes (`feedback_fix_culture`).
+causes (`fb_fix_culture`).
 
 ## Instructions
 

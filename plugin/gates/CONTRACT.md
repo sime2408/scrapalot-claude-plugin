@@ -1,8 +1,8 @@
 # The gate contract — proof instead of narration
 
 Read this once before running any command that opens a gate ledger:
-`/scrapalot-book`, `/scrapalot-postprocess-parse`, `/scrapalot-postprocess-graph`,
-`/scrapalot-rag-test`, `/scrapalot-competitive-impl`, `/scrapalot-devops-loop`.
+`/scrapalot:book`, `/scrapalot:postprocess-parse`, `/scrapalot:book-graph`,
+`/scrapalot:rag-test`, `/scrapalot:competitive-impl`, `/scrapalot:devops-loop`.
 
 It is the sibling of `postprocess/GAUNTLET.md`, and the two answer different
 questions. The gauntlet answers **who judges** — a separate critic with fresh
@@ -37,7 +37,7 @@ turn end. Copy `template.md`, or:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/gate-check.py open \
-    --run book-2cdd2f36 --command /scrapalot-book \
+    --run book-2cdd2f36 --command /scrapalot:book \
     --scope "one book, parse + graph, critic says the stored structure is the book's"
 ```
 
@@ -118,7 +118,7 @@ not proof.
 ## Provenance — a green box is not proof you did it
 
 A ledger measures **outcomes**, and an outcome can be true because somebody else
-made it true. On 2026-08-20 a `/scrapalot-book` run opened its reprocess ledger
+made it true. On 2026-08-20 a `/scrapalot:book` run opened its reprocess ledger
 and seven gates went green before it had done anything: another session on the
 same host had already reprocessed the document. Only a timestamp check caught it.
 
@@ -173,7 +173,7 @@ an active ledger has unmet gates.
   the agent's job. A hook that could launch pytest is a hook that can hang a
   session.
 - **It is silent when no ledger is active** — ordinary conversation is untouched.
-- **A ledger blocks only the session that opened it.** The nightly `/scrapalot-devops-loop`
+- **A ledger blocks only the session that opened it.** The nightly `/scrapalot:devops-loop`
   must never leave a wall standing in front of the owner's next morning session,
   and two parallel sessions must not block each other. Another session's open
   ledger is reported as an orphan to archive, never enforced.

@@ -40,7 +40,7 @@ MENTIONS / CO_OCCURS / SHARED_ENTITY / node, character offsets, `file:line`,
 table or column names, severity codes. Those belong in the report file and the
 ledger row, NEVER in chat. A choice the user cannot make without first decoding
 jargon is a broken choice — this has been raised repeatedly and outranks being
-concise. (`feedback_plain_language_first`, `no_shorthand_codes`.)
+concise. (`fb_plain_language_first`.)
 
 ## Why this exists (read before changing anything)
 
@@ -171,7 +171,7 @@ The structural audit proves the chunks MATCH `documents.content`. It does NOT
 prove the content is worth anything. A book passes every structural check while
 its text is watermark noise, OCR sludge, duplicated boilerplate, or simply the
 wrong book. No previous tool covered this — it is the whole reason a MODEL runs
-this audit instead of a script (`feedback_reasoning_audit_of_content`).
+this audit instead of a script (`fb_reasoning_audit`).
 
 READ the real thing, not the numbers:
 - a representative sample of chunks — start, middle, AND end, never just the first
@@ -252,9 +252,9 @@ Judge each name by reasoning, not a metric. Flag as garbage anything that is:
 **When you find garbage, it is a defect in the EXTRACTION SOURCE CODE, never a
 data blemish to patch away.** Fixing the graph rows leaves the bug live for the
 next 5000 books. Trace it to source and propose the code fix:
-- LLM path — the extraction prompt (`configs/prompts.yaml` → `entity_extraction.extraction_prompt`, the "What to NEVER Extract" list) and the name gate `is_valid_llm_entity_name` (`src/main/utils/documents/utils.py`).
-- spaCy path — `create_spacy_entity` / `SpacyExtractor._is_valid_entity` (`src/main/service/graph/entity_extraction/spacy_extractor.py`).
-- The Redis `entity_cache:*` (`entity_pipeline.py`) serves cached extractions for 2h — a re-extraction after a prompt/gate change is a NO-OP until that cache is cleared. Say so; clear it before re-extracting.
+- LLM path — the extraction prompt (`configs/prompts.yaml` → `entity_extraction.extraction_prompt`, the "What to NEVER Extract" list) and the name gate `is_valid_entity_name` (`src/main/utils/documents/utils.py`), which the spaCy path shares.
+- spaCy path — `create_spacy_entity` in `src/main/service/graph/entity_extractor.py`, which calls the same `is_valid_entity_name`.
+- The Redis `entity_cache:*` (`entity_pipeline.py`) serves cached extractions for 24 h, keyed on the unit's text alone — a re-extraction after a prompt/gate change is a NO-OP until that cache is cleared. Say so; clear it before re-extracting.
 
 Report the garbage as a finding with its source cause and the smallest code fix.
 A source-code change is approval-gated (see Fixes below) — propose, do not auto-apply.

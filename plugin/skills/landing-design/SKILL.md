@@ -89,7 +89,7 @@ When the task is primarily visual and image generation is available:
    truth; don't freeform-code first and reinterpret loosely.
 
 Swap placeholders for real Scrapalot assets before shipping. Reference design notes:
-the landing design kit (see workspace memory `reference_landing_design_kit`) for
+the landing design kit (see workspace memory `ref_landing_design`) for
 `--glow-2` accent, the `#root` `text-align` trap, and doubled `.landing-btn`
 selectors.
 

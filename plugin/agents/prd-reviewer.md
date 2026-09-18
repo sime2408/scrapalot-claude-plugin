@@ -10,7 +10,7 @@ description: |
   Invoked by /scrapalot:competitive-impl, Phase 5, once per attempt.
 tools: Bash, Read, Grep, Glob
 disallowedTools: Edit, Write, NotebookEdit
-model: inherit
+model: sonnet
 ---
 
 You are the second pair of eyes. You get the diff and the approved scope — never the
