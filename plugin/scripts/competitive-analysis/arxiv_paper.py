@@ -48,7 +48,15 @@ USER_AGENT = "scrapalot-competitive-analysis/2.0 (+https://github.com/sime2408/s
 CRAWL_DELAY = 15.0  # robots.txt Crawl-delay for arxiv.org, in seconds
 MAX_PAPERS_PER_HOUR = 6
 ID_RE = re.compile(r"^(\d{4}\.\d{4,5}|[a-z-]+(?:\.[A-Z]{2})?/\d{7})(v\d+)?$")
-ARTEFACT_HOSTS = ("github.com", "gitlab.com", "huggingface.co", "zenodo.org", "bitbucket.org", "codeberg.org")
+ARTEFACT_HOSTS = (
+    "github.com",
+    "gitlab.com",
+    "huggingface.co",
+    "zenodo.org",
+    "bitbucket.org",
+    "codeberg.org",
+    "anonymous.4open.science",
+)
 # arXiv's own HTML renderer links these from every page; they are not the paper's.
 RENDERER_LINKS = ("github.com/arXiv/", "github.com/brucemiller/LaTeXML")
 
@@ -58,14 +66,24 @@ _ARTEFACT_URL = re.compile(
 )
 
 
+# A clone URL's ".git", or text the HTML rendering glued straight onto it
+# ("…/Repo.gitGitHub"), is not part of the repository's address.
+_GIT_SUFFIX = re.compile(r"\.git(?:[A-Z][\w-]*)?$")
+
+
+def _clean_link(url: str) -> str:
+    return _GIT_SUFFIX.sub("", url.rstrip(".,"))
+
+
 def artefact_links(*texts: str, seed: list[str] | None = None) -> list[str]:
     """Code, data and model links, whether the paper made them hyperlinks or plain text."""
-    links = list(seed or [])
-    for text in texts:
-        for url in _ARTEFACT_URL.findall(text or ""):
-            url = url.rstrip(".")
-            if url not in links and not any(r in url for r in RENDERER_LINKS):
-                links.append(url)
+    links: list[str] = []
+    seen: set[str] = set()
+    candidates = list(seed or []) + [url for text in texts for url in _ARTEFACT_URL.findall(text or "")]
+    for url in map(_clean_link, candidates):
+        if url.lower() not in seen and not any(r in url for r in RENDERER_LINKS):
+            seen.add(url.lower())
+            links.append(url)
     return links
 
 
