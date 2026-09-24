@@ -1,12 +1,12 @@
 ---
-description: Analyze GitHub competitors — batch (auto-search by stars) OR single-repo strategy-first deep-dive when given a repo URL. Decides for itself whether the findings justify a PRD, and always states why.
+description: Analyze GitHub competitors — batch (auto-search by stars) OR single-repo strategy-first deep-dive when given a repo URL — or arXiv papers, the day's announcement triaged by Jev or one paper by id. Decides for itself whether the findings justify a PRD, and always states why.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent, WebSearch, WebFetch, TaskCreate, TaskUpdate, TaskList, AskUserQuestion
 user-invocable: true
 ---
 
-# Competitive Analysis — GitHub Open Source Discovery
+# Competitive Analysis — GitHub Open Source and arXiv Discovery
 
-Automatically search GitHub for competitor repos by stars, triage, deep-analyze, and generate PRD documents.
+Automatically search GitHub for competitor repos by stars, triage, deep-analyze, and generate PRD documents — or read arXiv papers the same way, through the **arXiv Workflow**.
 
 ## File-naming law (binding — read before writing any file)
 
@@ -25,14 +25,16 @@ sweeps for strays and renames them, but that is a repair, not a licence.
 
 ## Input Parameter & Mode Detection
 
-The argument `$ARGUMENTS` selects ONE of two modes — detect it before doing anything else:
+The argument `$ARGUMENTS` selects ONE mode — detect it before doing anything else:
 
 | `$ARGUMENTS` looks like… | Mode | What happens |
 |---|---|---|
 | empty, or a **number** (e.g. `10`) | **BATCH** (default) | Search GitHub by stars, triage many, analyze up to N. Run Phases 1→6 below. |
 | a **GitHub URL** (`https://github.com/owner/repo`) or **`owner/repo`** slug | **SINGLE-REPO DEEP-DIVE** | SKIP discovery/triage. Analyze exactly that one repo, with a deeper, strategy-first lens. Run the **Single-Repo Deep-Dive Workflow** section, then Phases 4→6. |
+| `arxiv`, or `arxiv <N>` | **ARXIV RADAR** | Jev judges the day's arXiv announcement; read the shortlist and deep-read at most 3 papers. Run the **arXiv Workflow**, then Phase 6. |
+| an **arXiv id or URL** (`2609.27009`, `arxiv:2609.27009`, `https://arxiv.org/abs/…`) | **SINGLE PAPER** | One paper, no radar. Run the **arXiv Workflow** from step 4, then Phase 6. |
 
-If the user passes a URL while invoking `/scrapalot:competitive-analysis`, do NOT treat it as a repo count and do NOT search GitHub — they want a focused deep-dive on that specific project. (This command does both modes; single-repo mode is just a branch. Formerly named `/scrapalot:competitive-analysis-batch`.)
+If the user passes a URL while invoking `/scrapalot:competitive-analysis`, do NOT treat it as a repo count and do NOT search GitHub — they want a focused deep-dive on that specific project. A value shaped like `NNNN.NNNNN` is an arXiv id, not a repo count. (This command covers every mode; each is just a branch. Formerly named `/scrapalot:competitive-analysis-batch`.)
 
 In BATCH mode, `$ARGUMENTS` is the **maximum number of repos** to analyze (default: 10), searched sorted by **stars descending** and filtered by **recent push date**.
 
@@ -44,6 +46,9 @@ Before starting, read the tracking file to avoid re-analyzing repos:
 - If this file doesn't exist, create it with a header comment
 - **SKIP** any repo already listed as `relevant` or `irrelevant` in this file
 - Only re-analyze repos marked `skipped` (those that failed previously)
+- **arXiv papers** have their own tracker, `${CLAUDE_PROJECT_DIR}/.claude/competitive-analysis/analyzed_arxiv_papers.txt`
+  (`<id>|<date>|<verdict>|<reason-tag-or-target>|<title>`, verdicts defined in its header);
+  `arxiv_radar.py` already leaves tracked ids out of its shortlist
 
 ## Scripts Available
 
@@ -51,6 +56,12 @@ Helper scripts are in `${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/`:
 - `search_repos.sh <max_repos> [sort_by]` — Search GitHub for competitor repos (outputs JSON lines)
 - `clone_repo.sh <full_name> [branch]` — Shallow clone to `/tmp/git/<owner>__<repo>`
 - `extract_features.sh <clone_dir>` — Extract README, structure, configs from cloned repo
+- `arxiv_radar.py` — the day's arXiv announcement from the RSS feed, judged by Jev against
+  `arxiv_profile.toml`; prints the shortlist (`--limit N`, `--dry-run`, `--shortlist`,
+  `--no-jev`, `--calibrate`)
+- `arxiv_paper.py <id>` — one paper's metadata and HTML full text (`--pdf` when there is no
+  HTML version), crawl-delayed, capped per hour and cached
+- `arxiv_profile.toml` — Scrapalot's interests as the questions Jev answers per paper
 
 **ALWAYS use these scripts** — do NOT write custom search/clone commands inline.
 
@@ -81,6 +92,91 @@ In this mode the goal is **not** "catalog every feature vs Scrapalot". It's: **u
 5. **Only when the gate returned PRD:** produce the full Phase 4 PRD (feature catalog, ranked top 10, NOT-worth, architecture comparison, advantages) **to the visual-plan discipline** (`${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/visual_plan_discipline.md`: outcome-first, reuse-first, hard-to-reverse bets first, right-block-real-substance, one bottom Open Questions form) — but keep every ranking subordinate to the thesis from step 4. Features that serve the strategic direction rank above incidental nice-to-haves even if the latter are lower effort. Continue to Phase 5 (wireframes + mermaid + the Phase 5c unified review surface) and Phase 6 (registry + push).
 
 6. **Verify the thesis with the user.** After writing the PRD, surface the "Strategic Direction" thesis in your final summary and, if the direction is non-obvious or branches (e.g. "background Science agents" vs "interactive deep-research agents"), use AskUserQuestion to confirm which direction to emphasize — one question, plain-language options. Do not silently pick.
+
+## arXiv Workflow (ARXIV RADAR and SINGLE PAPER modes)
+
+Papers go through the same Decision Gate as repos, but they are found and read
+differently, and how they are fetched is binding.
+
+### Reading arXiv without getting blocked
+
+The previous arXiv command was deleted because arXiv blocked it. It searched the API
+(`export.arxiv.org/api/query`) page after page, and arXiv answers that pattern by
+refusing requests (a bulk or unbounded query gets `406` at the edge) and by cooling
+the IP down for hours, longer with every retry. The replacement never searches:
+
+1. **Discovery is the RSS feed.** `arxiv_radar.py` reads `rss.arxiv.org` once per run:
+   every category in one request, the whole daily announcement with titles and
+   abstracts.
+2. **Triage costs arXiv nothing.** Jev judges every paper from the feed's own text,
+   one yes/no question per interest in `arxiv_profile.toml`, all in one call per paper.
+   Claude reads only the shortlist.
+3. **Full text only for what Claude picks, at most 3 per pass.** `arxiv_paper.py`
+   reads a paper's abstract page and HTML full text, waits arXiv's robots.txt crawl
+   delay between requests, caps papers per hour, caches every paper, and never retries
+   a refusal.
+4. **Never** call `export.arxiv.org/api` for search or listings, never paginate arXiv,
+   never fetch arxiv.org with WebFetch or curl by hand (that skips the gate and the
+   cache), never retry a 403/406/429/503. Abstracts of papers that are not in the day's
+   feed come from Semantic Scholar's batch endpoint, the way `--calibrate` gets them,
+   not from arXiv.
+
+### Steps
+
+1. **Radar** (ARXIV RADAR only):
+   `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/arxiv_radar.py --project-dir ${CLAUDE_PROJECT_DIR}`
+   (append `--limit N` when `$ARGUMENTS` is `arxiv N`). It prints the day's shortlist,
+   must-read then maybe, each paper with its strongest interest, its type and the
+   probability that code is released, and writes the full records with abstracts to
+   `${CLAUDE_PROJECT_DIR}/.claude/competitive-analysis/arxiv/shortlist-<day>.jsonl`.
+   Tracked papers are left out, and a second run on the same day judges nothing new. A
+   day without an announcement gives an empty feed; that is not an error. Exit 2 means
+   no Jev key: tell the owner, or fall back to `--no-jev`, which prints the raw feed for
+   triage by title (every abstract Claude then reads costs Max quota).
+2. **Read the shortlist file** and route every paper before judging it:
+   - its contribution runs at training time → the training-notebook track
+     (`fb_training_papers.md`), never a PRD;
+   - its main contribution is a benchmark or an evaluation framework →
+     `skipped|belongs_in_evaluations` (`fb_evaluation_separate.md`);
+   - out of domain once read → `irrelevant`.
+
+   **Record every shortlisted paper you reject here** as an `irrelevant` tracker line.
+   Those lines are the negatives `--calibrate` measures the profile against.
+3. **Pick at most 3** of the rest for a deep read: highest relevance first, preferring a
+   high `code` probability, because a code link is the cheapest artefact to verify.
+4. **Fetch each one** (SINGLE PAPER mode starts here, with the id from `$ARGUMENTS`), one
+   at a time, never in parallel:
+   `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/arxiv_paper.py <id> --project-dir ${CLAUDE_PROJECT_DIR}`.
+   It prints the metadata, the number of data tables, the code/data/model links and
+   the path of `fulltext.md`; read that file. No HTML version → run it again with
+   `--pdf` and Read the PDF. Exit 3 is the hourly cap: stop and carry on with what is
+   cached.
+5. **The three pillars** (`fb_prd_requires.md`, binding, in order; the first that fails
+   ends the paper as `skipped` with its reason tag, and no questionnaire is shown):
+   1. artefacts: a results table in the full text, a code or model link that resolves,
+      or an independent write-up quoting numbers; else `no_evidence_yet`;
+   2. a multi-agent code audit of Scrapalot (3–5 agents over disjoint subtrees, every
+      claim with a `file:line`) that returns the five Decision Gate fields of Phase 3
+      step 5; all ALREADY_HAVE or INCOMPATIBLE → `no_gap`;
+   3. a baseline actually run now (an existing pytest, eval or admin metric); none →
+      `no_baseline`. Training papers are exempt: the notebook produces its own baseline.
+6. **Decision Gate** → PRD / TASK / NOTHING, exactly as for repos. A paper's PRD also
+   carries `## Acceptance evaluation`: the test or eval path, today's baseline, the
+   target, and the statistical threshold.
+7. **Tracker**: append `<id>|<YYYY-MM-DD>|<verdict>|<reason-tag-or-target>|<title>` to
+   `analyzed_arxiv_papers.txt` (an accepted training paper records its notebook anchor
+   as the target), then Phase 6.
+
+### Keeping the profile honest
+
+The interests are plain statements in `arxiv_profile.toml`, and its header holds the
+writing rules. After any edit run
+`python3 ${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/arxiv_radar.py --calibrate --project-dir ${CLAUDE_PROJECT_DIR}`.
+It scores every tracker verdict with the profile and prints the AUC between the papers
+that passed triage and those that did not, a threshold table, and the passed papers the
+`maybe` threshold would drop. Keep an edit only if the AUC does not fall, and set `maybe`
+to the highest threshold that still keeps recall at 90% or above. When one interest
+floods the shortlist, reword it; a higher threshold only starves the others.
 
 ## Decision Gate — is a PRD justified?
 
@@ -418,6 +514,10 @@ starting the work uninvited.
 - **ALWAYS** clean up `/tmp/git/` clones after analysis
 - **ALWAYS** update `analyzed_repos.txt` after each repo
 - **MAX 5 parallel agents** at a time
+- **NEVER** query `export.arxiv.org/api` for search or listings, paginate arXiv, fetch
+  arxiv.org outside `arxiv_paper.py`, or retry a 403/406/429/503 (see *Reading arXiv
+  without getting blocked*)
+- **MAX 3** full-text paper reads per arXiv pass
 - **NEVER write a PRD without stating why** — the Decision Gate reasoning paragraph is
   mandatory in all three outcomes, and lands in the PRD as `## Why this deserves a plan`
 - **NEVER claim a gap without a grep** — `already_in_scrapalot` must carry a `file:symbol`

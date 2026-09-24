@@ -1,0 +1,151 @@
+# What Scrapalot wants from arXiv, as questions Jev answers for every paper in the
+# daily announcement. Read by arxiv_radar.py, which copies it into the project's
+# state directory before each run, so data/ and site/ land there and never here.
+#
+# Writing rules (Jev reads words literally):
+#   - one idea per interest, describing what the PAPER does or contributes;
+#   - no negations: what you do not want goes in [[exclude]], phrased positively;
+#   - no dates, counts or comparisons: filter those in code.
+# A statement that is true of most papers fires on most papers. When an interest
+# floods the shortlist, reword it to ask for the contribution, not the presence of
+# the thing; raising the threshold only starves the other interests.
+# After any edit run `arxiv_radar.py --calibrate` and keep the edit only if the
+# separation it reports does not drop.
+
+[radar]
+title = "Scrapalot arXiv radar"
+max_papers = 3000
+combine = "max"            # a paper is as relevant as its best-matching interest
+
+[jev]
+backend = "typesafe"
+model = "jev-1.13.0"       # pinned: a model change moves every probability below
+concurrency = 8
+requests_per_minute = 1000
+
+[[sources]]
+type = "arxiv"
+categories = ["cs.IR", "cs.CL", "cs.AI", "cs.DL", "cs.MA", "cs.CR"]
+include_cross_lists = true
+
+# ── Retrieval and answering ─────────────────────────────────────────────────
+[[interests]]
+id = "rag_method"
+label = "RAG method"
+text = "The paper proposes a new retrieval-augmented generation method for answering questions from a document collection"
+
+[[interests]]
+id = "retrieval_ranking"
+label = "Retrieval and reranking"
+text = "The paper improves how relevant passages are retrieved or reranked for a question"
+
+[[interests]]
+id = "graph_rag"
+label = "Knowledge graph RAG"
+text = "The paper uses a knowledge graph built from documents to improve question answering with a language model"
+
+[[interests]]
+id = "query_rewriting"
+label = "Query rewriting"
+text = "The paper rewrites, expands or decomposes a user's question before retrieval"
+
+[[interests]]
+id = "cross_lingual"
+label = "Cross-lingual retrieval"
+text = "The paper is about retrieval or question answering where the question and the documents are in different languages"
+
+[[interests]]
+id = "citations"
+label = "Cited answers"
+text = "The paper makes a question-answering system cite the exact source passages behind each claim in its answer"
+
+[[interests]]
+id = "rag_faithfulness"
+label = "RAG faithfulness"
+text = "The paper detects or reduces hallucinations in answers generated from retrieved documents"
+
+[[interests]]
+id = "rag_evaluation"
+label = "RAG evaluation"
+text = "The paper's main contribution is a benchmark or evaluation method for retrieval-augmented generation"
+weight = 0.8
+
+# ── Documents ───────────────────────────────────────────────────────────────
+[[interests]]
+id = "document_parsing"
+label = "Document parsing"
+text = "The paper improves extracting text, tables or structure from PDF files or scanned documents"
+
+[[interests]]
+id = "chunking"
+label = "Chunking"
+text = "The paper studies how to split long documents into chunks for retrieval"
+
+# ── Agents and research ─────────────────────────────────────────────────────
+[[interests]]
+id = "deep_research"
+label = "Deep research agents"
+text = "The paper presents an agent that researches a question on its own by searching and reading many sources and then writes a report"
+
+[[interests]]
+id = "agentic_search"
+label = "Agentic search"
+text = "The paper is about an agent that searches a document collection step by step, deciding what to look up next"
+
+[[interests]]
+id = "tool_routing"
+label = "Tool routing"
+text = "The paper's main contribution is a method for choosing which tool, retriever or knowledge source a language model agent should use"
+
+[[interests]]
+id = "agent_memory"
+label = "Agent memory"
+text = "The paper gives a language model assistant a long-term memory that persists across conversations"
+
+[[interests]]
+id = "ai_scientist"
+label = "AI scientist"
+text = "The paper presents an AI system that writes or reviews scientific papers"
+
+[[interests]]
+id = "agent_engineering"
+label = "Agent engineering"
+text = "The paper explains how to design or run language model agent systems in production"
+weight = 0.8
+
+[[interests]]
+id = "agent_security"
+label = "Agent security"
+text = "The paper protects language model agents or retrieval systems from prompt injection or data exfiltration"
+
+# ── Training (routed to the training notebook, never to a PRD) ─────────────
+[[interests]]
+id = "post_training"
+label = "Post-training"
+text = "The paper proposes a new fine-tuning, reinforcement learning or distillation method for language models"
+weight = 0.8
+
+[[exclude]]
+id = "medical_imaging"
+label = "Medical imaging"
+text = "The main application is medical imaging such as CT or MRI scans"
+
+[[exclude]]
+id = "robotics"
+label = "Robotics"
+text = "The main application is robot control or autonomous driving"
+
+[thresholds]
+must_read = 0.75
+maybe = 0.60
+exclude = 0.80
+
+[signals]
+paper_type = true          # Choice: new method / benchmark / dataset / survey / system / ...
+code_release = true        # Noul: the abstract says code, data or weights are released
+evidence = true            # Score: how much evaluation the abstract reports
+
+[output]
+site_dir = "site"
+data_dir = "data"
+near_misses = 15

@@ -87,7 +87,7 @@
             {
               "name": "competitive-analysis",
               "invoke": "/scrapalot:competitive-analysis",
-              "description": "Analyze GitHub competitors — batch (auto-search by stars) OR single-repo strategy-first deep-dive when given a repo URL. Decides for itself whether the findings justify a PRD, and always states why."
+              "description": "Analyze GitHub competitors — batch (auto-search by stars) OR single-repo strategy-first deep-dive when given a repo URL — or arXiv papers, the day's announcement triaged by Jev or one paper by id. Decides for itself whether the findings justify a PRD, and always states why."
             },
             {
               "name": "devops-loop",
