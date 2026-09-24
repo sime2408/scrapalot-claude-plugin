@@ -88,8 +88,8 @@ def parse_id(raw: str) -> str | None:
 
 
 class Gate:
-    """Spaces arXiv requests by the crawl delay and counts papers per hour, shared by
-    every process through one lock file."""
+    """Spaces arXiv requests by the crawl delay and counts, per hour, the papers and
+    listing pages read, shared by every process through one lock file."""
 
     def __init__(self, state: Path):
         state.mkdir(parents=True, exist_ok=True)
@@ -98,9 +98,12 @@ class Gate:
 
     def _load(self) -> dict:
         try:
-            return json.loads(self.path.read_text(encoding="utf-8"))
+            data = json.loads(self.path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            return {"last_request": 0.0, "papers": []}
+            data = {}
+        data.setdefault("last_request", 0.0)
+        data.setdefault("events", {})
+        return data
 
     def _save(self, data: dict) -> None:
         self.path.write_text(json.dumps(data), encoding="utf-8")
@@ -120,16 +123,16 @@ class Gate:
                 self._save(data)
                 fcntl.flock(lock, fcntl.LOCK_UN)
 
-    def papers_last_hour(self) -> int:
+    def recent(self, kind: str) -> int:
         cutoff = time.time() - 3600
-        return sum(1 for t in self._load()["papers"] if t >= cutoff)
+        return sum(1 for t in self._load()["events"].get(kind, []) if t >= cutoff)
 
-    def count_paper(self) -> None:
+    def count(self, kind: str) -> None:
         with self.lock_path.open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX)
             data = self._load()
             cutoff = time.time() - 3600
-            data["papers"] = [t for t in data["papers"] if t >= cutoff] + [time.time()]
+            data["events"][kind] = [t for t in data["events"].get(kind, []) if t >= cutoff] + [time.time()]
             self._save(data)
             fcntl.flock(lock, fcntl.LOCK_UN)
 
@@ -331,7 +334,7 @@ def read_paper(paper_id: str, folder: Path, gate: Gate, want_pdf: bool) -> int:
     # `has_html` is recorded once the HTML page was asked for, found or not.
     need_text = meta is None or "has_html" not in meta or (meta["has_html"] and not text_path.is_file())
     need_pdf = want_pdf and not pdf_path.is_file()
-    if (need_meta or need_text or need_pdf) and gate.papers_last_hour() >= MAX_PAPERS_PER_HOUR:
+    if (need_meta or need_text or need_pdf) and gate.recent("paper") >= MAX_PAPERS_PER_HOUR:
         print(
             f"error: {MAX_PAPERS_PER_HOUR} papers were already fetched from arXiv in the last hour. "
             "Stop here and continue with what is cached.",
@@ -378,7 +381,7 @@ def read_paper(paper_id: str, folder: Path, gate: Gate, want_pdf: bool) -> int:
         return 1
     finally:
         if touched_network:
-            gate.count_paper()
+            gate.count("paper")
 
     print_summary(meta, text_path, pdf_path)
     return 0

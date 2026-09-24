@@ -31,7 +31,7 @@ The argument `$ARGUMENTS` selects ONE mode — detect it before doing anything e
 |---|---|---|
 | empty, or a **number** (e.g. `10`) | **BATCH** (default) | Search GitHub by stars, triage many, analyze up to N. Run Phases 1→6 below. |
 | a **GitHub URL** (`https://github.com/owner/repo`) or **`owner/repo`** slug | **SINGLE-REPO DEEP-DIVE** | SKIP discovery/triage. Analyze exactly that one repo, with a deeper, strategy-first lens. Run the **Single-Repo Deep-Dive Workflow** section, then Phases 4→6. |
-| `arxiv`, or `arxiv <N>` | **ARXIV RADAR** | Jev judges the day's arXiv announcement; read the shortlist and deep-read at most 3 papers. Run the **arXiv Workflow**, then Phase 6. |
+| `arxiv`, optionally with categories (`cs.IR,cs.CL`), a period (`pastweek` or `YYYY-MM`), `page N`, or a number (the judging limit) | **ARXIV RADAR** | Jev judges the latest announcement, or one page of a category listing; read the shortlist and deep-read at most 3 papers. Run the **arXiv Workflow**, then Phase 6. |
 | an **arXiv id or URL** (`2609.27009`, `arxiv:2609.27009`, `https://arxiv.org/abs/…`) | **SINGLE PAPER** | One paper, no radar. Run the **arXiv Workflow** from step 4, then Phase 6. |
 
 If the user passes a URL while invoking `/scrapalot:competitive-analysis`, do NOT treat it as a repo count and do NOT search GitHub — they want a focused deep-dive on that specific project. A value shaped like `NNNN.NNNNN` is an arXiv id, not a repo count. (This command covers every mode; each is just a branch. Formerly named `/scrapalot:competitive-analysis-batch`.)
@@ -56,9 +56,10 @@ Helper scripts are in `${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/`:
 - `search_repos.sh <max_repos> [sort_by]` — Search GitHub for competitor repos (outputs JSON lines)
 - `clone_repo.sh <full_name> [branch]` — Shallow clone to `/tmp/git/<owner>__<repo>`
 - `extract_features.sh <clone_dir>` — Extract README, structure, configs from cloned repo
-- `arxiv_radar.py` — the day's arXiv announcement from the RSS feed, judged by Jev against
-  `arxiv_profile.toml`; prints the shortlist (`--limit N`, `--dry-run`, `--shortlist`,
-  `--no-jev`, `--calibrate`)
+- `arxiv_radar.py` — arXiv papers judged by Jev against `arxiv_profile.toml`, from the latest
+  announcement (RSS) or one page of the category listings; prints the shortlist
+  (`--categories`, `--period pastweek|YYYY-MM`, `--page N`, `--page-size S`, `--limit N`,
+  `--dry-run`, `--shortlist`, `--no-jev`, `--calibrate`)
 - `arxiv_paper.py <id>` — one paper's metadata and HTML full text (`--pdf` when there is no
   HTML version), crawl-delayed, capped per hour and cached
 - `arxiv_profile.toml` — Scrapalot's interests as the questions Jev answers per paper
@@ -105,9 +106,13 @@ The previous arXiv command was deleted because arXiv blocked it. It searched the
 refusing requests (a bulk or unbounded query gets `406` at the edge) and by cooling
 the IP down for hours, longer with every retry. The replacement never searches:
 
-1. **Discovery is the RSS feed.** `arxiv_radar.py` reads `rss.arxiv.org` once per run:
-   every category in one request, the whole daily announcement with titles and
-   abstracts.
+1. **Discovery reads what arXiv publishes for readers, never the search API.** By
+   default `arxiv_radar.py` reads `rss.arxiv.org` once per run: every category in one
+   request, the latest announcement with titles and abstracts. To go further back it
+   pages the category listings (`/list/<category>/pastweek`, `/list/<category>/<YYYY-MM>`),
+   which robots.txt allows: one request per category and page, spaced by the crawl
+   delay, with an hourly cap on pages. Listings carry no abstracts, so those come from
+   Semantic Scholar's batch endpoint.
 2. **Triage costs arXiv nothing.** Jev judges every paper from the feed's own text,
    one yes/no question per interest in `arxiv_profile.toml`, all in one call per paper.
    Claude reads only the shortlist.
@@ -115,24 +120,39 @@ the IP down for hours, longer with every retry. The replacement never searches:
    reads a paper's abstract page and HTML full text, waits arXiv's robots.txt crawl
    delay between requests, caps papers per hour, caches every paper, and never retries
    a refusal.
-4. **Never** call `export.arxiv.org/api` for search or listings, never paginate arXiv,
+4. **Never** call `export.arxiv.org/api` for search or listings, never page the API,
    never fetch arxiv.org with WebFetch or curl by hand (that skips the gate and the
-   cache), never retry a 403/406/429/503. Abstracts of papers that are not in the day's
-   feed come from Semantic Scholar's batch endpoint, the way `--calibrate` gets them,
-   not from arXiv.
+   cache), never retry a 403/406/429/503, and never walk listing pages in a loop on your
+   own: read one page per run and ask the owner before the next. Abstracts arXiv did not
+   send come from Semantic Scholar's batch endpoint, not from arXiv.
 
 ### Steps
 
 1. **Radar** (ARXIV RADAR only):
-   `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/arxiv_radar.py --project-dir ${CLAUDE_PROJECT_DIR}`
-   (append `--limit N` when `$ARGUMENTS` is `arxiv N`). It prints the day's shortlist,
-   must-read then maybe, each paper with its strongest interest, its type and the
-   probability that code is released, and writes the full records with abstracts to
-   `${CLAUDE_PROJECT_DIR}/.claude/competitive-analysis/arxiv/shortlist-<day>.jsonl`.
-   Tracked papers are left out, and a second run on the same day judges nothing new. A
-   day without an announcement gives an empty feed; that is not an error. Exit 2 means
-   no Jev key: tell the owner, or fall back to `--no-jev`, which prints the raw feed for
-   triage by title (every abstract Claude then reads costs Max quota).
+   `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/arxiv_radar.py --project-dir ${CLAUDE_PROJECT_DIR} <flags>`,
+   with the flags taken from `$ARGUMENTS`:
+
+   | `$ARGUMENTS` | flags |
+   |---|---|
+   | `arxiv` | none: the latest announcement, every category in the profile |
+   | `arxiv cs.IR,cs.CL` | `--categories cs.IR,cs.CL` (works with every form below) |
+   | `arxiv pastweek` | `--period pastweek`: the past week's listing, page 1 |
+   | `arxiv 2026-08 page 2` | `--period 2026-08 --page 2`: that month's listing, second page |
+   | `arxiv … 50` (a bare number) | `--limit 50`: judge at most 50 papers |
+
+   A page holds `--page-size` entries per category (default 250, 25-2000). It prints the
+   shortlist, must-read then maybe, each paper with its strongest interest, its type and
+   the probability that code is released, and writes the full records with abstracts to
+   `${CLAUDE_PROJECT_DIR}/.claude/competitive-analysis/arxiv/shortlist-<label>.jsonl`, where
+   the label is the day for the feed and `<period>-p<page>` for a listing page. A listing
+   run also prints, per category, which entries it read and the next page
+   (`cs.IR 2026-08: entries 26-50 of 493; next: --page 3`), and it lists apart the papers
+   that have no abstract anywhere yet. A paper judged in the last two weeks is not judged
+   again, whichever source brought it, so re-reading a page costs nothing and shows
+   nothing new. Tracked papers are left out. A day without an announcement gives an empty
+   feed; that is not an error. Exit 2 means no Jev key: tell the owner, or fall back to
+   `--no-jev`, which prints the papers for triage by title (every abstract Claude then
+   reads costs Max quota).
 2. **Read the shortlist file** and route every paper before judging it:
    - its contribution runs at training time → the training-notebook track
      (`fb_training_papers.md`), never a PRD;
@@ -514,9 +534,9 @@ starting the work uninvited.
 - **ALWAYS** clean up `/tmp/git/` clones after analysis
 - **ALWAYS** update `analyzed_repos.txt` after each repo
 - **MAX 5 parallel agents** at a time
-- **NEVER** query `export.arxiv.org/api` for search or listings, paginate arXiv, fetch
-  arxiv.org outside `arxiv_paper.py`, or retry a 403/406/429/503 (see *Reading arXiv
-  without getting blocked*)
+- **NEVER** query `export.arxiv.org/api` for search or listings, page the API, fetch
+  arxiv.org outside `arxiv_radar.py` / `arxiv_paper.py`, walk listing pages in a loop, or
+  retry a 403/406/429/503 (see *Reading arXiv without getting blocked*)
 - **MAX 3** full-text paper reads per arXiv pass
 - **NEVER write a PRD without stating why** — the Decision Gate reasoning paragraph is
   mandatory in all three outcomes, and lands in the PRD as `## Why this deserves a plan`
