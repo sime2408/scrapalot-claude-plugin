@@ -31,8 +31,8 @@ The argument `$ARGUMENTS` selects ONE mode — detect it before doing anything e
 |---|---|---|
 | empty, or a **number** (e.g. `10`) | **BATCH** (default) | Search GitHub by stars, triage many, analyze up to N. Run Phases 1→6 below. |
 | a **GitHub URL** (`https://github.com/owner/repo`) or **`owner/repo`** slug | **SINGLE-REPO DEEP-DIVE** | SKIP discovery/triage. Analyze exactly that one repo, with a deeper, strategy-first lens. Run the **Single-Repo Deep-Dive Workflow** section, then Phases 4→6. |
-| `arxiv`, optionally with categories (`cs.IR,cs.CL`), a period (`pastweek` or `YYYY-MM`), `page N`, or a number (the judging limit) | **ARXIV RADAR** | Jev judges the latest announcement, or one page of a category listing; read the shortlist and deep-read at most 3 papers. Run the **arXiv Workflow**, then Phase 6. |
-| an **arXiv id or URL** (`2609.27009`, `arxiv:2609.27009`, `https://arxiv.org/abs/…`) | **SINGLE PAPER** | One paper, no radar. Run the **arXiv Workflow** from step 4, then Phase 6. |
+| `arxiv`, optionally with categories (`cs.IR,cs.CL`), a period (`pastweek` or `YYYY-MM`), `page N`, or a number (the judging limit) | **ARXIV RADAR** | Jev judges the latest announcement, or one page of a category listing; read the shortlist, deep-read up to 5 papers and put 3–5 proposals in front of the owner, who picks. Run the **arXiv Workflow**, then Phase 6. |
+| an **arXiv id or URL** (`2609.27009`, `arxiv:2609.27009`, `https://arxiv.org/abs/…`) | **SINGLE PAPER** | One paper, no radar. Run the **arXiv Workflow** from step 4; the proposal turn holds that one card. Then Phase 6. |
 
 If the user passes a URL while invoking `/scrapalot:competitive-analysis`, do NOT treat it as a repo count and do NOT search GitHub — they want a focused deep-dive on that specific project. A value shaped like `NNNN.NNNNN` is an arXiv id, not a repo count. (This command covers every mode; each is just a branch. Formerly named `/scrapalot:competitive-analysis-batch`.)
 
@@ -96,8 +96,11 @@ In this mode the goal is **not** "catalog every feature vs Scrapalot". It's: **u
 
 ## arXiv Workflow (ARXIV RADAR and SINGLE PAPER modes)
 
-Papers go through the same Decision Gate as repos, but they are found and read
-differently, and how they are fetched is binding.
+A pass over papers ends in **proposals the owner picks from**, not in a verdict the analysis
+reaches on its own: the owner wants to see the ideas worth building and choose. The
+analysis still filters out papers with no evidence and papers whose idea Scrapalot already
+has; what it no longer does is drop an idea because nothing measures it yet. How papers are
+fetched is binding.
 
 ### Reading arXiv without getting blocked
 
@@ -116,7 +119,7 @@ the IP down for hours, longer with every retry. The replacement never searches:
 2. **Triage costs arXiv nothing.** Jev judges every paper from the feed's own text,
    one yes/no question per interest in `arxiv_profile.toml`, all in one call per paper.
    Claude reads only the shortlist.
-3. **Full text only for what Claude picks, at most 3 per pass.** `arxiv_paper.py`
+3. **Full text only for what Claude picks, at most 5 per pass.** `arxiv_paper.py`
    reads a paper's abstract page and HTML full text, waits arXiv's robots.txt crawl
    delay between requests, caps papers per hour, caches every paper, and never retries
    a refusal.
@@ -162,8 +165,9 @@ the IP down for hours, longer with every retry. The replacement never searches:
 
    **Record every shortlisted paper you reject here** as an `irrelevant` tracker line.
    Those lines are the negatives `--calibrate` measures the profile against.
-3. **Pick at most 3** of the rest for a deep read: highest relevance first, preferring a
-   high `code` probability, because a code link is the cheapest artefact to verify.
+3. **Pick up to 5** of the rest for a deep read: highest relevance first, preferring a
+   high `code` probability, because a code link is the cheapest artefact to verify. Spread
+   the picks over different parts of Scrapalot rather than five papers on one mechanism.
 4. **Fetch each one** (SINGLE PAPER mode starts here, with the id from `$ARGUMENTS`), one
    at a time, never in parallel:
    `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/competitive-analysis/arxiv_paper.py <id> --project-dir ${CLAUDE_PROJECT_DIR}`.
@@ -171,21 +175,46 @@ the IP down for hours, longer with every retry. The replacement never searches:
    the path of `fulltext.md`; read that file. No HTML version → run it again with
    `--pdf` and Read the PDF. Exit 3 is the hourly cap: stop and carry on with what is
    cached.
-5. **The three pillars** (`fb_prd_requires.md`, binding, in order; the first that fails
-   ends the paper as `skipped` with its reason tag, and no questionnaire is shown):
+5. **Evidence and a real gap** — the two checks that still drop a paper
+   (`fb_prd_requires.md`, in order):
    1. artefacts: a results table in the full text, a code or model link that resolves,
-      or an independent write-up quoting numbers; else `no_evidence_yet`;
-   2. a multi-agent code audit of Scrapalot (3–5 agents over disjoint subtrees, every
-      claim with a `file:line`) that returns the five Decision Gate fields of Phase 3
-      step 5; all ALREADY_HAVE or INCOMPATIBLE → `no_gap`;
-   3. a baseline actually run now (an existing pytest, eval or admin metric); none →
-      `no_baseline`. Training papers are exempt: the notebook produces its own baseline.
-6. **Decision Gate** → PRD / TASK / NOTHING, exactly as for repos. A paper's PRD also
-   carries `## Acceptance evaluation`: the test or eval path, today's baseline, the
-   target, and the statistical threshold.
-7. **Tracker**: append `<id>|<YYYY-MM-DD>|<verdict>|<reason-tag-or-target>|<title>` to
-   `analyzed_arxiv_papers.txt` (an accepted training paper records its notebook anchor
-   as the target), then Phase 6.
+      or an independent write-up quoting numbers; else `skipped|no_evidence_yet`;
+   2. ONE multi-agent code audit for the whole pass: 3–5 agents over disjoint Scrapalot
+      subtrees, each checking every picked paper's mechanisms that fall in its subtree,
+      every claim with a `file:line`. Per mechanism: ALREADY_HAVE / PARTIAL / MISSING /
+      INCOMPATIBLE plus the five Decision Gate fields of Phase 3 step 5. All ALREADY_HAVE
+      or INCOMPATIBLE → `skipped|no_gap`.
+
+   A defect the audit turns up is fixed at once (workspace rule 5a), in its own worktree
+   and commits — and the pass still ends in proposals; the fix does not replace them.
+6. **How we would know it works.** Name the existing harness that would show the
+   improvement (`measurable_via`); when it runs in minutes, run it now for a baseline
+   number. When nothing measures it, the proposal says so plainly and building the
+   measurement becomes the first step of its PRD — a missing measurement no longer drops
+   the idea. Training papers keep their own track (`fb_training_papers.md`).
+7. **Proposals, 3 to 5, ranked.** Each is a change the owner could say yes to:
+   - papers that argue for the same change become one proposal (two papers on cheaper
+     reranking → one proposal);
+   - `scrapalot:prd-explainer` writes the context turn and the choice card
+     (`${CLAUDE_PLUGIN_ROOT}/skills/competitive-impl/SKILL.md` §5.0 and §5.2c) from the audit,
+     one short block per proposal: what the person using Scrapalot gets, where it lives,
+     what exists today, rough work and risk, how we would know it works, and the smaller
+     version when there is one — then one recommendation with one reason. The Decision
+     Gate's answers (already have? cost? a 20% version?) feed the blocks; the gate no
+     longer decides on its own;
+   - present the text verbatim and **end the turn**: no question in the same turn, no
+     codenames, no file paths (competitive-impl §5.1);
+   - next turn: one `AskUserQuestion` with `multiSelect`, the proposals as options, the
+     recommended one first.
+8. **The owner's pick.**
+   - Picked and multi-part → PRD (Phase 4 discipline, Phases 5 and 5c) with an
+     `## Acceptance evaluation` section: the harness, today's baseline or "built in step 1",
+     the target and the threshold. A pick that fits in one commit is done as a task
+     instead, and its card said so.
+   - Not picked → `relevant|not_picked`.
+9. **Tracker**: append `<id>|<YYYY-MM-DD>|<verdict>|<reason-tag-or-target>|<title>` to
+   `analyzed_arxiv_papers.txt` — a picked paper as `accepted|<PRD path, task commit or
+   notebook anchor>` — then Phase 6.
 
 ### Keeping the profile honest
 
@@ -537,7 +566,7 @@ starting the work uninvited.
 - **NEVER** query `export.arxiv.org/api` for search or listings, page the API, fetch
   arxiv.org outside `arxiv_radar.py` / `arxiv_paper.py`, walk listing pages in a loop, or
   retry a 403/406/429/503 (see *Reading arXiv without getting blocked*)
-- **MAX 3** full-text paper reads per arXiv pass
+- **MAX 5** full-text paper reads per arXiv pass
 - **NEVER write a PRD without stating why** — the Decision Gate reasoning paragraph is
   mandatory in all three outcomes, and lands in the PRD as `## Why this deserves a plan`
 - **NEVER claim a gap without a grep** — `already_in_scrapalot` must carry a `file:symbol`
