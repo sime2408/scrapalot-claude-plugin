@@ -147,13 +147,18 @@ the IP down for hours, longer with every retry. The replacement never searches:
    shortlist, must-read then maybe, each paper with its strongest interest, its type and
    the probability that code is released, and writes the full records with abstracts to
    `${CLAUDE_PROJECT_DIR}/.claude/competitive-analysis/arxiv/shortlist-<label>.jsonl`, where
-   the label is the day for the feed and `<period>-p<page>` for a listing page. A listing
+   the label is the day for the feed, `pastweek-<day>-p<page>` for the past week's
+   listing (that week moves every day) and `<YYYY-MM>-p<page>` for a month's. A listing
    run also prints, per category, which entries it read and the next page
    (`cs.IR 2026-08: entries 26-50 of 493; next: --page 3`), and it lists apart the papers
    that have no abstract anywhere yet. A paper judged in the last two weeks is not judged
-   again, whichever source brought it, so re-reading a page costs nothing and shows
-   nothing new. Tracked papers are left out. A day without an announcement gives an empty
-   feed; that is not an error. Exit 2 means no Jev key: tell the owner, or fall back to
+   again, whichever source brought it, and Semantic Scholar is asked only for the papers
+   still to be judged, so re-reading a page shows nothing new and costs no judging. A
+   page read since arXiv's latest announcement is kept, so a rerun after a failure (a
+   busy Semantic Scholar that stays busy through the script's waits) does not ask arXiv
+   again. Tracked papers are left out. A day without an announcement (every weekend)
+   gives an empty feed; that is not an error: the past week's listing still holds what
+   the feed no longer shows. Exit 2 means no Jev key: tell the owner, or fall back to
    `--no-jev`, which prints the papers for triage by title (every abstract Claude then
    reads costs Max quota).
 2. **Read the shortlist file** and route every paper before judging it:

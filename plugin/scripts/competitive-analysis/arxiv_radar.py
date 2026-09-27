@@ -11,13 +11,16 @@ Papers come from the two places arXiv serves to automated readers:
   which robots.txt allows and which page with skip/show. Each category and page is
   one request, spaced by the crawl delay that `arxiv_paper.py` enforces, and an
   hour may read only so many pages. Listings carry no abstracts, so those come
-  from Semantic Scholar's batch endpoint, never from arXiv.
+  from Semantic Scholar's batch endpoint, never from arXiv. A page read after
+  arXiv's latest announcement is kept until the next one, so a run that fails
+  after reading it is rerun without asking arXiv again.
 
 Jev (TypeSafe's System One judge) then answers one yes/no question per Scrapalot
 interest for every paper. Only the shortlist reaches Claude, and only the few
 papers Claude picks from it are fetched in full, by `arxiv_paper.py`. A paper
 judged in the last two weeks is not judged again, whichever source brought it,
-so paging back over a page already read costs nothing.
+and a listing asks Semantic Scholar only for the papers still to be judged, so
+paging back over a page already read costs no judging and no abstracts.
 
 The engine is JEV-Paper-Radar (MIT), pinned to one commit and kept in a cache
 clone outside every repository. It needs nothing beyond the standard library.
@@ -40,7 +43,9 @@ The project is --project-dir, else $CLAUDE_PROJECT_DIR, else $SCRAPALOT_ROOT,
 else the working directory. The key is TYPESAFE_API_KEY or JEV_API_KEY from the
 environment, else the matching line of --key-file (default: the chat deploy's
 env file). Only that line is used, and the key goes to the engine, never to
-stdout.
+stdout. Semantic Scholar is asked without a key, from a pool every keyless
+client shares, and answers 429 while that pool is busy; S2_API_KEY in the
+environment gives this client a rate of its own.
 
 Exit codes: 0 done, 1 arXiv refused, a source failed or the engine failed,
 2 no key, no engine or bad arguments.
@@ -60,10 +65,11 @@ import time
 import tomllib
 import urllib.error
 import urllib.request
-from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from xml.sax.saxutils import escape
+from zoneinfo import ZoneInfo
 
 from arxiv_paper import Gate, Refused, fetch
 
@@ -73,6 +79,13 @@ USER_AGENT = "scrapalot-competitive-analysis/2.0 (+https://github.com/sime2408/s
 S2_BATCH = "https://api.semanticscholar.org/graph/v1/paper/batch?fields=title,abstract"
 LISTING = "https://arxiv.org/list/{category}/{period}?skip={skip}&show={show}"
 MAX_LISTING_PAGES_PER_HOUR = 30
+# A busy keyless pool stays busy for minutes, so the waits double: 15, 30, 60, 120 s.
+S2_ATTEMPTS = 5
+# arXiv announces at 20:00 New York time, Sunday to Thursday. An hour later the
+# listings have settled; a page read after that holds until the next announcement.
+ANNOUNCE_TZ = ZoneInfo("America/New_York")
+ANNOUNCE_SETTLED_HOUR = 21
+ANNOUNCE_WEEKDAYS = {6, 0, 1, 2, 3}
 
 PROFILE = Path(__file__).resolve().parent / "arxiv_profile.toml"
 ENGINE = (
@@ -272,11 +285,41 @@ def parse_listing(page: str) -> tuple[int | None, list[Listed]]:
     return (int(total.group(1).replace(",", "")) if total else None), entries
 
 
+def latest_announcement(now: datetime) -> datetime:
+    """When the latest announcement's listings had settled. A holiday without an
+    announcement only makes a kept page look older than it is, never newer."""
+    moment = now.astimezone(ANNOUNCE_TZ).replace(hour=ANNOUNCE_SETTLED_HOUR, minute=0, second=0, microsecond=0)
+    while moment > now or moment.weekday() not in ANNOUNCE_WEEKDAYS:
+        moment -= timedelta(days=1)
+    return moment
+
+
+def kept_listing(path: Path, wanted: dict) -> tuple[dict[str, Listed], list[tuple[str, int | None, int]]] | None:
+    """The page as read since the latest announcement, or None when it has to be read again."""
+    try:
+        kept = json.loads(path.read_text(encoding="utf-8"))
+        if datetime.fromisoformat(kept["at"]) < latest_announcement(datetime.now(timezone.utc)):
+            return None
+        if any(kept[name] != value for name, value in wanted.items()):
+            return None
+        return {p["id"]: Listed(**p) for p in kept["papers"]}, [tuple(row) for row in kept["report"]]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def collect_listing(
     layout: Layout, categories: list[str], period: str, page: int, size: int
 ) -> tuple[dict[str, Listed], list[tuple[str, int | None, int]]]:
     """One listing page per category, through the shared politeness gate. Raises
-    Refused on the first refusal, so the remaining categories are never asked."""
+    Refused on the first refusal, so the remaining categories are never asked.
+    A page read in full is kept and served again until the next announcement."""
+    path = layout.state / f"listing-{period}-p{page}.json"
+    wanted = {"categories": categories, "page_size": size}
+    kept = kept_listing(path, wanted)
+    if kept is not None:
+        err(f"  - {period}, page {page}: read since the latest announcement; arXiv not asked again")
+        return kept
+    started = datetime.now(timezone.utc)
     gate = Gate(layout.state)
     papers: dict[str, Listed] = {}
     report = []
@@ -294,6 +337,10 @@ def collect_listing(
         report.append((category, total, len(entries)))
         for entry in entries:
             papers.setdefault(entry.id, entry)
+    if len(report) == len(categories):
+        record = {"at": started.isoformat(timespec="seconds"), **wanted, "report": report}
+        record["papers"] = [asdict(paper) for paper in papers.values()]
+        path.write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
     return papers, report
 
 
@@ -344,6 +391,17 @@ def tracked_ids(layout: Layout) -> set[str]:
     return ids
 
 
+def judged_ids(layout: Layout, engine: Path, day: str) -> set[str]:
+    """What the engine judged inside its dedupe window: it would not judge those again,
+    so their abstracts are not worth a Semantic Scholar request."""
+    import_engine(engine)
+    from paper_radar.config import load_config
+    from paper_radar.store import Store
+
+    window = load_config(PROFILE).output.dedupe_days
+    return {base_id(i) for i in Store(layout.state / "data").seen_ids(date.fromisoformat(day), window)}
+
+
 def shown_ids(layout: Layout, day: str) -> set[str]:
     path = layout.decisions(day)
     if not path.is_file():
@@ -362,38 +420,50 @@ def _top_interests(interests: dict[str, float], n: int = 3, floor: float = 0.3) 
 
 def print_shortlist(layout: Layout, day: str, label: str, skip: set[str] | None = None) -> int:
     """Print the day's must-read and maybe papers, minus tracked ones and minus `skip`
-    (what earlier runs of the day already showed). Returns how many it printed."""
+    (what earlier runs of the day already showed). Returns how many it printed.
+    The label's file gains the printed papers and keeps what earlier runs put there,
+    so a rerun with nothing new never empties it."""
     path = layout.decisions(day)
     if not path.is_file():
-        print(f"No decisions stored for {day} (nothing new to judge, or the radar has not run).")
+        print(f"No must-read or maybe paper stored for {day}.")
         return 0
-    hidden = tracked_ids(layout) | (skip or set())
+    tracked = tracked_ids(layout)
+    hidden = tracked | (skip or set())
     records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     rows = sorted(
         (r for r in records if r["band"] in SHOWN_BANDS and base_id(r["paper"]["id"]) not in hidden),
         key=lambda r: r["relevance"],
         reverse=True,
     )
+    fresh = [
+        {
+            "id": base_id(r["paper"]["id"]),
+            "band": r["band"],
+            "relevance": r["relevance"],
+            "interests": dict(_top_interests(r["interests"])),
+            "paper_type": r.get("paper_type"),
+            "code": r.get("code"),
+            "evidence": r.get("evidence"),
+            "title": r["paper"]["title"],
+            "abstract": r["paper"].get("abstract", ""),
+            "url": r["paper"]["url"],
+            "categories": r["paper"].get("categories", []),
+        }
+        for r in rows
+    ]
     out = layout.shortlist(label)
+    earlier = []
+    if out.is_file():
+        added = {record["id"] for record in fresh}
+        lines = out.read_text(encoding="utf-8").splitlines()
+        earlier = [json.loads(line) for line in lines if line.strip()]
+        earlier = [record for record in earlier if record["id"] not in added | tracked]
     with out.open("w", encoding="utf-8") as handle:
-        for r in rows:
-            paper = r["paper"]
-            record = {
-                "id": base_id(paper["id"]),
-                "band": r["band"],
-                "relevance": r["relevance"],
-                "interests": dict(_top_interests(r["interests"])),
-                "paper_type": r.get("paper_type"),
-                "code": r.get("code"),
-                "evidence": r.get("evidence"),
-                "title": paper["title"],
-                "abstract": paper.get("abstract", ""),
-                "url": paper["url"],
-                "categories": paper.get("categories", []),
-            }
+        for record in sorted(fresh + earlier, key=lambda record: record["relevance"], reverse=True):
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     must = sum(1 for r in rows if r["band"] == "must_read")
-    print(f"\n{label}: {must} must-read, {len(rows) - must} maybe (tracked papers left out)")
+    kept = f"; {len(earlier)} from earlier runs kept in the file" if earlier else ""
+    print(f"\n{label}: {must} must-read, {len(rows) - must} maybe (tracked papers left out{kept})")
     print(f"Full records with abstracts: {out}")
     for r in rows:
         top = _top_interests(r["interests"], n=1, floor=0.0)
@@ -416,30 +486,43 @@ def write_unjudged(out: Path, papers: list[dict]) -> None:
 # --------------------------------------------------------------------------- abstracts
 
 
+def _s2_error(error: urllib.error.HTTPError) -> str:
+    try:
+        return str(json.loads(error.read() or b"{}").get("error") or "")
+    except (OSError, ValueError, AttributeError):
+        return ""
+
+
 def s2_abstracts(ids: list[str]) -> dict[str, tuple[str, str]]:
     """Titles and abstracts from Semantic Scholar's batch endpoint, so neither a
     listing page nor a calibration run asks arXiv for them."""
+    headers = {"Content-Type": "application/json", "User-Agent": USER_AGENT}
+    if os.environ.get("S2_API_KEY", "").strip():
+        headers["x-api-key"] = os.environ["S2_API_KEY"].strip()
     found: dict[str, tuple[str, str]] = {}
     for start in range(0, len(ids), 500):
         if start:
             time.sleep(1)
         chunk = ids[start : start + 500]
         body = json.dumps({"ids": [f"ARXIV:{i}" for i in chunk]}).encode("utf-8")
-        for attempt in range(3):
-            request = urllib.request.Request(
-                S2_BATCH,
-                data=body,
-                method="POST",
-                headers={"Content-Type": "application/json", "User-Agent": USER_AGENT},
-            )
+        for attempt in range(S2_ATTEMPTS):
+            request = urllib.request.Request(S2_BATCH, data=body, method="POST", headers=headers)
             try:
                 with urllib.request.urlopen(request, timeout=60) as response:
                     items = json.loads(response.read())
                 break
             except urllib.error.HTTPError as error:
-                if error.code != 429 or attempt == 2:
+                # A batch in which Semantic Scholar knows no paper at all is refused with this
+                # 400 rather than answered with nulls: none of them has an abstract yet.
+                if error.code == 400 and _s2_error(error).startswith("No valid paper ids"):
+                    items = []
+                    break
+                if error.code != 429 or attempt == S2_ATTEMPTS - 1:
                     raise
-                time.sleep(20)
+                hinted = (error.headers.get("Retry-After") or "").strip()
+                wait = min(300, max(15 * 2**attempt, int(hinted) if hinted.isdigit() else 0))
+                err(f"  Semantic Scholar is busy (429); asking again in {wait} s")
+                time.sleep(wait)
         for paper_id, item in zip(chunk, items):
             if item and item.get("abstract"):
                 found[paper_id] = (item.get("title") or "", item["abstract"])
@@ -458,7 +541,7 @@ def run_rss(args, layout: Layout, engine: Path, key: str, day: str, extra: list[
     return 0
 
 
-def run_listing(args, layout: Layout, engine: Path | None, key: str | None, day: str, extra: list[str]) -> int:
+def run_listing(args, layout: Layout, engine: Path, key: str | None, day: str, extra: list[str]) -> int:
     categories = args.categories or profile_categories()
     try:
         listed, report = collect_listing(layout, categories, args.period, args.page, args.page_size)
@@ -472,19 +555,26 @@ def run_listing(args, layout: Layout, engine: Path | None, key: str | None, day:
     print_paging(report, args.period, args.page, args.page_size)
 
     tracked = tracked_ids(layout)
-    fresh = [p for p in listed.values() if p.id not in tracked]
+    judged = judged_ids(layout, engine, day) - tracked
+    fresh = [p for p in listed.values() if p.id not in tracked and p.id not in judged]
+    print(
+        f"{len(listed)} listed: {sum(p.id in tracked for p in listed.values())} tracked, "
+        f"{sum(p.id in judged for p in listed.values())} judged by an earlier run, {len(fresh)} to judge"
+    )
+    if not fresh:
+        print("Nothing new on this page. `--shortlist --date <day>` reprints an earlier run's shortlist.")
+        return 0
     try:
-        abstracts = s2_abstracts([p.id for p in fresh]) if fresh else {}
+        abstracts = s2_abstracts([p.id for p in fresh])
     except (urllib.error.URLError, TimeoutError, ConnectionError) as error:
-        err(f"error: Semantic Scholar did not return abstracts: {error}")
+        err(f"error: Semantic Scholar did not return abstracts: {error}. The page is kept: a rerun does not ask arXiv.")
         return 1
     readable = [(p, abstracts[p.id][1]) for p in fresh if p.id in abstracts]
     missing = [p for p in fresh if p.id not in abstracts]
-    print(
-        f"{len(listed)} listed, {len(listed) - len(fresh)} already tracked, "
-        f"{len(missing)} without an abstract anywhere yet"
-    )
-    label = f"{args.period}-p{args.page}"
+    page = f"{args.period}-p{args.page}"
+    # The past week moves every day, so its outputs carry the day: a later week's run
+    # must not overwrite an earlier week's shortlist. A month's page does not move.
+    label = f"pastweek-{day}-p{args.page}" if args.period == "pastweek" else page
     layout.state.mkdir(parents=True, exist_ok=True)
 
     if key is None:  # --no-jev: hand the papers to Claude unjudged
@@ -497,17 +587,14 @@ def run_listing(args, layout: Layout, engine: Path | None, key: str | None, day:
         print(f"Not judged. Full records: {out}")
         for p, _ in readable:
             print(f"{p.id:<11} {p.title}")
-    else:
-        feed = layout.state / f"listing-{label}.xml"
+    elif readable:
+        feed = layout.state / f"listing-{page}.xml"
         write_feed(feed, readable)
         before = shown_ids(layout, day)
         if run_engine(layout, engine, key, extra, render_profile(feed_file=feed)) != 0:
             return 1
-        if not args.dry_run and not print_shortlist(layout, day, label, skip=before) and readable:
-            print(
-                "Nothing new on this page: a paper judged in the last two weeks is not judged again. "
-                "Its earlier shortlist file still holds it."
-            )
+        if not args.dry_run and not print_shortlist(layout, day, label, skip=before):
+            print(f"None of the {len(readable)} papers judged now reached the shortlist.")
     if missing:
         print("\nNo abstract yet (not judged; read the title, or page back later):")
         for p in missing:
@@ -653,7 +740,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.no_jev:
         if args.period:
-            return run_listing(args, layout, None, None, day, [])
+            return run_listing(args, layout, engine, None, day, [])
         return run_rss_unjudged(args, layout, engine, day)
     key = read_key(args.key_file or layout.default_key_file)
     if not key:
