@@ -155,7 +155,9 @@ failures as if they were yours. **Put `CLAUDE_PROJECT_DIR=/opt/scrapalot` in fro
 of every invocation**, here and in Phase 5. **Name this run's ledger in `run`,
 `wait` and `resume`:** without a path they act on every active ledger, other
 sessions' included — a bare `wait` wrote its WAITING line into another session's
-devops ledger.
+devops ledger. **Run it once as soon as the gates are written, before any dispatch:**
+the first run is the baseline, and a first run after the build stamps the build's own
+work PRE-EXISTING — 13 of 25 gates on one book, where only the Phase 0 checks were.
 
 **Write this book's CHECK scripts fresh; never copy them from another book's
 work directory.** A copied script carries the other book's hardcoded paths and,
@@ -169,12 +171,19 @@ CLAUDE_PROJECT_DIR=/opt/scrapalot python3 ${CLAUDE_PLUGIN_ROOT}/scripts/gate-che
     --scope "<title> — graph layer only, until a critic says the stored entities are the book's"
 ```
 
-Starter gates. Adapt to the book you resolved.
+Starter gates. Adapt to the book you resolved, but copy them from this block,
+never from another book's ledger: a ledger copied from the book before it lacked
+G3b, added here an hour earlier, and the gap showed only when G3b's evidence had
+nowhere to go. G0b names such a gap at the baseline run.
 
 ```markdown
 - [ ] G0: every book this command closed before is still what its critic accepted
   CHECK: bash ${CLAUDE_PLUGIN_ROOT}/scripts/book-graph/closed-intact.sh check
   EXPECT: /^CLOSED_INTACT_OK closed=\d+ reopened=\d+$/m
+  EVIDENCE: pending
+- [ ] G0b: this ledger has a gate line for every starter gate id in this block; an abandoned gate keeps its line
+  CHECK: python3 ${CLAUDE_PLUGIN_ROOT}/scripts/book-graph/ledger-gates.py ${CLAUDE_PROJECT_DIR}/.claude/gates/active/graph-<short-doc-id>.md
+  EXPECT: /^LEDGER_GATES_OK starter=\d+ ledger=\d+$/m
   EVIDENCE: pending
 - [ ] G1: parse is recorded clean for this book and the collection resolves to tier 2
   CHECK: awk -F'|' '$4=="<document_id>" && $6 ~ /^parse_done_clean/ {n++} END{print "parse_clean_rows="n+0}' ${CLAUDE_PROJECT_DIR}/.claude/postprocess/progress.txt
@@ -205,7 +214,9 @@ Starter gates. Adapt to the book you resolved.
   CHECK: bash ${CLAUDE_PLUGIN_ROOT}/scripts/book-graph/build-survived.sh <document_id> <dispatched_at>
   EXPECT: /^BUILD_SURVIVED$/m
   EVIDENCE: pending
-- [ ] G3: every chunk is reachable Book → Chapter → Section → Chunk, traversal filtered on the Book
+- [ ] G3: every chunk is reachable Book → Chapter → Section → Chunk, traversal filtered on the Book, and the SET of chunk ids is the same in pgvector and Neo4j, every chunk counted on both sides (figure chunks too)
+  EVIDENCE: pending
+- [ ] G3b: every chunk the label-honesty reading opened sits under the chapter whose text it prints — a chapter label naming another section is recorded with a parse_correction row
   EVIDENCE: pending
 - [ ] G4: the stored entity names were read one by one, by a reader who is not the builder, and are things — not sentences, mottos or OCR noise; every name that fails (not a thing, a damaged spelling, a layout artifact, a generic word naming nothing) is named with its class and its owner (extractor, parse, structure), and keeps this gate open until it is fixed at source, the graph rebuilt and its names read again clean by such a reader, or it is recorded as `ABANDON: G4` with the list; stem-variant runs and near-duplicates are counted here and judged at G7a-read, and their members that are not things still fail here
   EVIDENCE: pending
@@ -228,7 +239,7 @@ Starter gates. Adapt to the book you resolved.
   EVIDENCE: pending
 - [ ] G7a-read: those numbers were READ — the book's own figure is quoted beside the corpus baseline `graph-layers.sh` prints for it (canonical names, entities in a community), and anything that is this book's defect rather than the standing corpus gap is named
   EVIDENCE: pending
-- [ ] G7b: every cross-book link was READ, and any link riding on a bare surname, an ambiguous common noun, or a name this book never prints is named — `LAYER=shared_link_names` counts that last kind for you, and each one is a FALSE link, not a thin one: the extractor labelled a passage with a word from elsewhere and the label then met another book's real entity
+- [ ] G7b: every cross-book link was READ, and any link riding on a bare surname, an ambiguous common noun, or a name this book never prints is named — `LAYER=shared_link_names` counts that last kind for you, and each one is a FALSE link, not a thin one: the passage was stored under a word from elsewhere, which then met another book's real entity; every link `LAYER=stale_links` lists (not refreshed by the book's last build) is FALSE too
   EVIDENCE: pending
 - [ ] G7c: chunk->entity labels were tested against the chunk text, and the number is read as the pointer it is, never reported as a defect rate
   CHECK: bash ${CLAUDE_PLUGIN_ROOT}/scripts/book-graph/edge-honesty.sh <document_id>
@@ -300,7 +311,7 @@ gate change a silent no-op — the evidence is the clear command you actually ra
 
 Before looking at Neo4j, read the book. Pull the real entity material out of
 `documents.content` — the people, places, works, concepts it actually discusses,
-sampled from start, middle and end. Write that down. Everything after this is
+over the whole text. Write that down. Everything after this is
 judged against it, not against a density metric.
 
 Write down the **discriminators** too: terms the field would expect that this
@@ -312,6 +323,12 @@ in one grep, and the Latin trio appearing in its graph would be contamination.
 one book 29 of 47 zero-hit field terms existed nowhere in the graph, so they could
 not have attached and proved nothing. Write each zero beside that term's node
 count in the whole graph.
+
+A long book is read in parts, never sampled: a 1.05M-character text went to four
+readers of about 1,455 lines each, one fresh agent merged their notes (the same
+entity across parts becomes one entry) and counted every form over the whole text;
+its 2,293 stored names went to three readers by name range. Each reader finished in
+under 50 minutes.
 
 A bar's closed list of the people, institutions and places a book names is a list
 to read against, never a filter. One bar declared everything beyond its six names
@@ -362,7 +379,14 @@ PR has merged and its deploy has finished, or until its session confirms it will
 not merge during the build. Write the dispatch time down, and prove survival at the end with `scripts/book-graph/build-survived.sh <document_id>
 <dispatched_at>`: the sync row completed after the dispatch, no worker logged `ready.`
 between the dispatch and `completed_at`, and an `extract_entities` task received once after
-the dispatch succeeded storing exactly the recorded entities. Not StartedAt, which is a container's last start only:
+the dispatch succeeded storing exactly the recorded entities. `completed_at` is not
+always the build's end: when the extraction's truncation guard demotes a finished
+build to `hierarchy_done`, the hourly reconciler re-promotes it and stamps its own
+time, so the success line no longer sits within 5 s of it and the check fails over
+a whole build. Grep the graph worker log for `Entity extraction truncated:
+document=<id8>` after the dispatch, with one receipt and no restart, before calling
+that a killed build — and then prove the build whole another way (the task's own
+success line, every phase row once, the stored count) rather than tick G2b. Not StartedAt, which is a container's last start only:
 a restart 43 minutes after one build finished turned a StartedAt check red over that
 finished build, and one timestamp cannot say whether an earlier restart fell inside
 the build. A killed build is half-built — the branch below — and its
@@ -414,6 +438,10 @@ Either way, verify the chain end to end yourself:
 `Book → Chapter → Section → Chunk`, every chunk reachable. **Filter traversals
 on the Book, not on `document_id`** — `Section` nodes do not carry it, and a
 scan that filters on it reports a broken hierarchy that is perfectly intact.
+Compare the SETS of chunk ids with every chunk on both sides: multimodal figure
+chunks (`is_multimodal` in the chunk metadata) are Chunk nodes too. A book's G3
+script that counted pgvector text chunks only (266) against every Chunk node (278)
+went red over a hierarchy that held all 278.
 
 **Use these names. Guessing them costs queries and, worse, returns a plausible
 wrong answer instead of an error:**
@@ -606,14 +634,20 @@ read, and before any verdict you check it against:
 * **quote characters** — one book used 45 curly apostrophes and no straight ones,
   the next 30 straight and no curly, so `philosopher's stone` read as absent from
   a book that writes it twice;
-* **labels borrowed from another book's node** — the extractor resolves the book's
-  own idea onto a node another book already created, in that book's wording or
-  language. On one book 8 of 13 flagged names were exactly that, and 3 more were
+* **labels borrowed from another book's node** — the book's own idea lands on a
+  node another book already created, in that book's wording or language: in a
+  build before the entity-identity fix mostly through the storage-time similarity
+  merge, since then through the extractor's own label or an equal canonical name. On one book 8 of 13 flagged names were exactly that, and 3 more were
   spacing or accent normalisations that landed on nodes another document had
   created: the German
   `Sündflut` for its "the Flood", `Goldmacherei` for its "Gold-making",
   `illusion of separation` for its "Separation is an illusion." Only the chunk text
-  behind the edge settles it.
+  behind the edge settles it;
+* **machine-written figure captions** — a multimodal chunk carries a captioning
+  model's description of a figure, not the book's words. On one book `Europa`,
+  `Kabbalah` and `Tree of Life` entered only through such chunks ("The four large
+  moons, Io, Europa, Ganymede, and Callisto"), and a FALSE cross-book link rode on
+  `Europa`. A name reached only through a caption chunk is the captioner's; say so.
 
 On the book where the first four were found, **zero** of twenty flagged names were
 contamination. What survived the reading was different and real: labels invented
@@ -664,8 +698,11 @@ What to do with each:
   weaker; a short form matching several names cannot be merged on its own — it
   can be several people (`John` matched five different men in one book: Dee,
   Aubrey, Trithemius, Mehung, Helvetius) or several names of one person (`Steiner`
-  beside `Rudolf Steiner` and `Dr. Steiner`). Those are printed by name; read
-  every one. A short form stored under ANOTHER type escapes all three classes
+  beside `Rudolf Steiner` and `Dr. Steiner`). Every short form in the three classes
+  is printed by name, because a count cannot be read: of one book's three unique
+  short forms, two were one scholar stored twice and the third a substance typed
+  person (`Essence` beside `Yellow Essence`), and a reading written from the count
+  got two of the three wrong. Read every one. A short form stored under ANOTHER type escapes all three classes
   (`Lauren` typed place beside `Lauren Aletta`), so the script lists those too.
   Over five books it listed 11: 5 mistyped people (`Lauren`, `Newton`, `Bacon`,
   `Berkeley`, `Johannes`) and 6 words inside a longer name: places in a title or byname
@@ -686,9 +723,10 @@ What to do with each:
   what the edge stores.
   **A shared name the book never prints is a FALSE link, not a thin one**, and
   `LAYER=shared_link_names` now counts them so nobody has to find them by hand
-  again. The extractor labels a passage with the standard name of what it judges
-  the passage to be about, in words the book does not use, and that label then
-  meets another book's real entity: on cc32d8f5 a passage on air, breath and
+  again. A passage is stored under the standard name of what it is judged to be
+  about, in words the book does not use — by the extractor, or, in a build before
+  the entity-identity fix, by the storage-time similarity merge — and that name
+  then meets another book's real entity: on cc32d8f5 a passage on air, breath and
   fire was labelled `Water of life` and joined an alchemy text; theme 16, on
   earthquakes as a shift in self-image, was labelled `catastrophic thinking` and
   joined two CBT workbooks; and an English account of withdrawing from society
@@ -714,7 +752,14 @@ What to do with each:
   that cause does not explain. Read `elsewhere` and `nowhere` first, then a sample
   of `neighbour`. The reverse
   also happens: a name printed once, in a chunk that carries no edge to it. Read
-  the offenders; do not report the percentage as a defect rate.
+  the offenders; do not report the percentage as a defect rate. **Read each
+  offender's chapter label against its text too.** The extractor sees the chunk's
+  `chapter_title` and turns it into edges, so a membership defect surfaces here and
+  nowhere else: `chapter-windows.sh` reads chapter sizes and `chapter-titles.py`
+  reads titles, and both passed a book whose chunks 23-73 carried a project title one
+  to five projects later than their text, giving 11 wrong project-title edges. A
+  label naming another section than the text is a G3b failure (the stored chapter
+  membership is not the book's), recorded with a `parse_correction` row.
 
 **A runnable CHECK here can only prove the measurement RAN.** Both scripts fail
 closed — a mistyped id, a missing Book node, an unreachable Neo4j or an EMPTY
@@ -796,6 +841,14 @@ If the NO stands, the critic's one sentence goes back to the builder. **Exit is 
 saying yes, or the owner stopping** — never a round count. Two different fixes
 hitting the same gap is a finding: name what was tried and stop.
 
+**Rebuilding a built book needs its entity edges deleted first.**
+`scrapalot.extract_entities` skips every chunk that already carries an entity
+edge, so re-dispatching a built book stores nothing: a rebuild after a source fix
+skipped 148 of 148 chunks and finished in 13 s as `already_complete`. Deleting the
+book's Chunk→Entity and Book→Entity edges (the purge query in
+`_purge_stale_entity_edges`) is a Neo4j write beyond the orchestrated build: ask,
+then dispatch, and read the worker log for `Processing N chunks`, not `Resuming`.
+
 **Autonomous:** source fixes on a branch, scans, tests, PRs, cache clears,
 re-running the critic. **Approval-gated, every time:** any Neo4j write beyond the
 orchestrated build, `delete_document_hierarchy`, any reprocess, any
@@ -823,7 +876,12 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/book-graph/closed-intact.sh record <document_
 ```
 
 It refuses a graph with any empty layer, and a closed book whose numbers moved
-since it was recorded: that book is `reopen`ed, not re-recorded.
+since it was recorded: that book is `reopen`ed, not re-recorded. `record` also
+saves the book's entity names, and `check` says which names a changed book lost and
+whether each is gone from the whole graph. Entity nodes are shared across books, so
+a book's graph changes when another document's work removes a node it mentions: on
+2026-09-30 two closed books had each lost one entity (`Albert Einstein`, `Vienna`),
+gone from every book, and only name lists that happened to be saved said which.
 
 **Correcting a closed ledger.** A manual gate found wrong after `close` is
 corrected in its own ledger, never in a new one. Move the file back to

@@ -2,24 +2,53 @@
 description: Read the review comments on a scrapalot-chat PR and fix the code until each one is resolved.
 ---
 
-# Address Github pull request comments:
+# Resolve the review comments on a scrapalot-chat PR
 
-1. You are given a feature branch name: $ARGUMENTS for which you should check PR pull request comments and resolve them by fixing the code.
-2. Check if you're already on that branch, if not checkout: `gh pr checkout [id]`
-If the user does not have the gh CLI, use git commands with users' ssh key (see ~/.ssh/config).
+`$ARGUMENTS` is a branch name or a PR number.
 
-3. Get comments on PR
+## 0. Set up — never in the shared checkout
+
+The worktree recipe of `/scrapalot:chat-pr-review` §0. Then read
+`gh pr view <n> --json state,mergeable,commits` and the diff of every `github-actions[bot]` commit:
+the auto-fix bot pushes to this branch, and what it changed is part of what you answer for.
+
+## 1. Collect every comment — they live in three places
+
 ```bash
-gh api --paginate repos/[owner]/[repo]/pulls/[id]/comments | jq '.[] | {user: .user.login, body, path, line, original_line, created_at, in_reply_to_id, pull_request_review_id, commit_id}'
+N=<pr>; R=sime2408/scrapalot-chat
+gh api --paginate "repos/$R/pulls/$N/comments"  | jq '.[] | {id, user: .user.login, path, line, original_line, in_reply_to_id, body}'   # inline
+gh api --paginate "repos/$R/issues/$N/comments" | jq '.[] | {id, user: .user.login, created_at, body}'                                   # conversation
+gh api --paginate "repos/$R/pulls/$N/reviews"   | jq '.[] | {id, user: .user.login, state, body}'                                        # submitted reviews
 ```
 
-4. For EACH comment, do the following. Remember to address one comment at a time.
-  4a. Print out the following: "(index). From [user] on [file]:[lines] — [body]"
-  4b. Analyze the file and the line range.
-  4c. If you don't understand the comment, do not make a change. Just ask me for clarification, or let me implement it myself.
-  4d. If you think you can make the change, make the change BEFORE moving onto the next comment.
-  4e. When you write comment or summary of resolved issues, do not use icons!
+- The CI review is a `claude[bot]` conversation comment, not an inline one, and only its latest
+  version counts. A `github-actions[bot]` comment listing items "left for you" is the auto-fix job
+  handing findings to a human: they belong to this work.
+- Skip what a later commit or reply has already settled.
 
-5. After all comments are processed, summarize what you did, and which comments need my attention.
-6. Try to resolve the comment and again run search for remaining comments to resolve them!
-7. Ask user to push the changes by squashing commits and force pushing to have single commit on that PR for review!
+## 2. One comment at a time
+
+Print `(n). From <user> on <file>:<line> — <body>`, then:
+
+1. **Find the code by what the comment quotes**, not only by its line number: lines drift as the
+   branch moves. A comment that no longer applies to the current code is reported as such.
+2. **Check the claim before changing anything.** A comment can be wrong — about an index, a query
+   plan, what a function returns. When the code or a read-only query proves it wrong, do not "fix" it:
+   reply on the PR with the evidence.
+3. **Unclear what it wants?** Do not guess; list it for the owner.
+4. Otherwise make the smallest change that resolves it, before moving to the next comment.
+
+The never-list of `/scrapalot:chat-pr-review` §5 applies here too: no schema changes, no comments
+claiming how the database runs a query, no narrowed filters, no generated files, nothing under
+`.github/`.
+
+## 3. Verify, commit, push
+
+Ruff on the changed files, an integration test in a throwaway container for any behaviour change,
+new commits without attribution trailers, and a normal push. Do not squash or force-push unless the
+owner asks: the PR is squash-merged anyway, and a force-push starts another review and auto-fix round.
+
+## 4. Report — to the owner, in Croatian, in plain words
+
+Which comments are resolved (with the commit), which you answered instead of changing code and why,
+and which need him. No icons in comments or summaries.

@@ -103,7 +103,7 @@ RETURN 'A' AS k, size(ns) AS persons,
     size([r IN t WHERE r[2] = 1 AND r[0] = 0 AND r[1] = 1]) AS given_unique,
     size([r IN t WHERE r[2] > 1]) AS ambiguous;") || fail neo4j_unreachable
 emit alias_person_short_forms "$(row "$A" A)"
-echo "    (persons, surname-short unique, given-name-short unique, short forms matching several names — read those below)"
+echo "    (persons, surname-short unique, given-name-short unique, short forms matching several names — both kinds are listed below by name; read each)"
 AD=$(cy "
 MATCH (b:Book {document_id:'$D'}) WITH b
 OPTIONAL MATCH (b)-[:MENTIONS]->(e:Entity) WHERE e.entity_type='person'
@@ -112,9 +112,24 @@ UNWIND ns AS y
 WITH y, [x IN ns WHERE x<>y AND size(y)<size(x)
     AND (toLower(x) ENDS WITH (' '+toLower(y)) OR toLower(x) STARTS WITH (toLower(y)+' '))] AS longs
 WHERE size(longs) > 1
-RETURN 'AD' AS k, y AS short_form, size(longs) AS n, longs[0..6] AS matches ORDER BY n DESC, short_form LIMIT 20;") || fail neo4j_unreachable
+RETURN 'AD' AS k, y AS short_form, size(longs) AS n, longs[0..6] AS matches ORDER BY n DESC, short_form;") || fail neo4j_unreachable
 echo "LAYER=alias_ambiguous_detail rows=$(echo "$AD" | grep -c '"AD"')"
 echo "$AD" | grep '"AD"' | sed 's/^/    /'
+
+# --- the unique short forms by name: a count cannot be read. `Sivin` beside
+# --- `Nathan Sivin` is one man stored twice, while `Essence` beside `Yellow
+# --- Essence` is a mistyped substance, not an alias.
+AU=$(cy "
+MATCH (b:Book {document_id:'$D'}) WITH b
+OPTIONAL MATCH (b)-[:MENTIONS]->(e:Entity) WHERE e.entity_type='person'
+WITH collect(e.name) AS ns
+UNWIND ns AS y
+WITH y, [x IN ns WHERE x<>y AND size(y)<size(x)
+    AND (toLower(x) ENDS WITH (' '+toLower(y)) OR toLower(x) STARTS WITH (toLower(y)+' '))] AS longs
+WHERE size(longs) = 1
+RETURN 'AU' AS k, y AS short_form, longs[0] AS full_name ORDER BY short_form;") || fail neo4j_unreachable
+echo "LAYER=alias_unique_detail rows=$(echo "$AU" | grep -c '"AU"')"
+echo "$AU" | grep '"AU"' | sed 's/^/    /'
 
 # --- a short form stored under ANOTHER type escapes the person-only test above:
 # --- `Lauren` typed place beside `Lauren Aletta`. A hit is a mistyped person or a
@@ -126,7 +141,7 @@ WITH b, collect(p.name) AS persons
 OPTIONAL MATCH (b)-[:MENTIONS]->(s:Entity) WHERE coalesce(s.entity_type,'') <> 'person' AND NOT s.name CONTAINS ' '
 WITH s, [x IN persons WHERE s IS NOT NULL AND (toLower(x) STARTS WITH (toLower(s.name)+' ') OR toLower(x) ENDS WITH (' '+toLower(s.name)))] AS longs
 WITH collect(CASE WHEN size(longs) > 0 THEN coalesce(s.entity_type,'?') + ' ' + s.name + ' -> ' + reduce(t='', x IN longs[..4] | t + x + '; ') END) AS hits
-RETURN 'AN' AS k, size(hits) AS n, hits[..20] AS detail;") || fail neo4j_unreachable
+RETURN 'AN' AS k, size(hits) AS n, hits AS detail;") || fail neo4j_unreachable
 ANV=$(row "$AN" AN)
 emit alias_non_person_short_forms "${ANV%%,*}"
 [ -n "$ANV" ] && echo "    (short forms of a person name stored under another type: a mistyped person, or a word inside a longer name; read each) ${ANV#*, }"
@@ -153,9 +168,31 @@ RETURN 'X' AS k, coalesce(s.shared_entity_count,0) AS n, left(coalesce(o.title,'
 echo "LAYER=shared_entity_detail rows=$(echo "$SD" | grep -c '"X"')"
 echo "$SD" | grep '"X"' | sed 's/^/    /'
 
+# --- a link the book's last relink did not refresh is stale: the linker MERGEs the
+# --- pairs that qualify and never deletes one, so a rebuilt book keeps links its
+# --- entities no longer support (two of one rebuilt book's links rode on names it
+# --- had stopped mentioning). The relink is the extraction's shared_entity phase,
+# --- whose metrics row records when it ran; completed_at is no anchor, since a
+# --- re-dispatch that skips every chunk moves it without relinking. A link updated
+# --- over ten minutes before the last relink is stale; a later update comes from
+# --- the other book's relink, which only touches a pair that still qualifies.
+RELINKED=$(docker exec pgvector psql -U scrapalot -d scrapalot -At -c "SELECT coalesce(to_char(max(started_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), 'none') FROM entity_extraction_metrics WHERE document_id='$D' AND phase='shared_entity';" 2>"$ERR") || fail "stale_links_relink_query: $(head -c 120 "$ERR" | tr '\n' ' ')"
+[ -n "$RELINKED" ] || fail "stale_links_relink_query_empty"
+if [ "$RELINKED" != none ]; then
+  ST=$(cy "
+MATCH (b:Book {document_id:'$D'})-[s:SHARED_ENTITY]-(o:Book)
+WHERE s.updated_at < datetime('$RELINKED') - duration('PT10M')
+RETURN 'ST' AS k, left(coalesce(o.title,''),40) AS book, toString(s.updated_at) AS updated;") || fail neo4j_unreachable
+  echo "LAYER=stale_links rows=$(echo "$ST" | grep -c '"ST"') relinked=$RELINKED"
+  echo "$ST" | grep '"ST"' | sed 's/^/    /'
+else
+  echo "LAYER=stale_links rows=0 relinked=none (no shared_entity phase recorded: read every link's updated_at by hand)"
+fi
+
 # --- what a link stands on. A shared name the book never prints is not a thin
-# --- link, it is a false one: the extractor labelled a passage with a word from
-# --- somewhere else and the label then matched another book's real entity. On
+# --- link, it is a false one: the passage was stored under another book's name
+# --- (by the extractor, or, in a build before the entity-identity fix, by the
+# --- storage-time similarity merge) and the name met that book's entity. On
 # --- cc32d8f5 three links rode on such names — `Initiationspfad` to a German
 # --- alchemy book, `catastrophic thinking` to two CBT workbooks, `Water of life`
 # --- to an alchemy text — and nothing in this script asked the question, so it
@@ -176,8 +213,19 @@ for name in names:
     key = norm(name).strip()
     if not key:
         continue
-    pattern = r"(?<![^\W_])" + r"\s+".join(re.escape(w) for w in key.split()) + r"(?![^\W_])"
-    if not re.search(pattern, text) and key not in text:
+    # A hyphen and a space are one separator: `Out-of-body experience` read as
+    # absent from a book that prints "out of body experience".
+    # OCR can also float an apostrophe: "Ts 'an T'ung Ch 'i" for Ts'an T'ung Ch'i.
+    pattern = (
+        r"(?<![^\W_])"
+        + r"[\s-]+".join(re.escape(w).replace("'", r"\s*'\s*") for w in re.split(r"[\s-]+", key) if w)
+        + r"(?![^\W_])"
+    )
+    # The substring fallback is only for a name that starts or ends on punctuation,
+    # where the whole-word boundary cannot hold; for any other name it hides an
+    # absent one inside a longer word ("Chan" inside "change").
+    loose = not (key[0].isalnum() and key[-1].isalnum()) and key in text
+    if not re.search(pattern, text) and not loose:
         absent.append(name)
 print(f"{len(names)}, {len(absent)} absent_from_this_book")
 if absent:

@@ -54,14 +54,18 @@ in.
 ## Return
 
 ```
+scope_match: <does it do exactly what was approved — one sentence>
+evidence: <file:line for each claim you make>
+tests_verdict: <adequate | thin — what is missing | absent>
+also_noticed: <smaller things that would not block a merge> | none
+objection: <if REJECT: ONE sentence naming the single most important problem>
 vote: APPROVE | REJECT
 confidence: high | medium | low
-scope_match: <does it do exactly what was approved — one sentence>
-objection: <if REJECT: ONE sentence naming the single most important problem>
-evidence: <file:line for each claim you make>
-also_noticed: <smaller things that would not block a merge> | none
-tests_verdict: <adequate | thin — what is missing | absent>
 ```
+
+The vote comes last, after the evidence, on purpose: a vote written first gets defended
+instead of checked, and evidence that undercuts it is then written beside a decision that
+never changes.
 
 `objection` is deliberately singular. The orchestrator sends that sentence, and nothing
 else, back to the builder. Pick the one that matters most; list the rest under

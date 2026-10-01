@@ -251,8 +251,10 @@ report has to state it.
 
 ## Step 1 — health
 `docker ps` shows `scrapalot-backend`, `scrapalot-chat`, `pgvector` up. The
-driver's `login` must return an `access_token` (admin / TEST_PASSWORD). If the
-gateway login fails, STOP and report — do not fabricate a token.
+driver's `login` must return an `access_token` (admin; the password comes from
+`TEST_PASSWORD`, else the file named by `TEST_PASSWORD_FILE`, else
+`~/.scrapalot-admin-password`). If the gateway login fails, STOP and report — do
+not fabricate a token.
 
 ## Step 2 — pick the book & open the session (only if not resuming)
 1. Admin workspace `books` = `0ebf2e09-7198-4b7a-a100-87b6dc969387` (override via
@@ -595,10 +597,15 @@ The moment the tester reports a stream error (`verdict.error` set):
 5. **Verify** — launch `scrapalot:devops-verifier` on the fixer's branch.
    `reject` → escalate to STATE Backlog, ask the user (AskUserQuestion), stop.
 6. **Ship & resume** (verifier `approve`):
-   - **Python non-gRPC** (`scrapalot-chat/src` not under `main/grpc/services`):
-     the prod container hot-reloads — apply the same edit to the LIVE checkout
-     (the fixer worked in a clone), confirm reload, then **resume immediately**.
-     gRPC service file → `docker restart scrapalot-chat` first.
+   - **Python** (`scrapalot-chat/src`, gRPC services or not): there is **no
+     hot-reload** — uvicorn runs with `reload=False`, so the container keeps the
+     code it imported when it started. Apply the same edit to the LIVE checkout
+     (the fixer worked in a clone), then `docker restart scrapalot-chat` once
+     `busy-check` shows no one mid-conversation and no deploy is in flight
+     (`gh run list -R sime2408/scrapalot-chat --limit 1`). Confirm the container
+     started after the edit (`docker inspect scrapalot-chat --format
+     '{{.State.StartedAt}}'`), then resume. Only `configs/prompts.yaml` changes
+     without a restart, and only while the T1 sentinel is on.
    - **Kotlin / UI / Gateway**: push the feature branch, open a PR (NEVER merge
      `main`), then poll until deployed:
      `until [ "$(gh run list --limit 1 --json status -q '.[0].status')" = "completed" ]; do sleep 15; done`
@@ -674,8 +681,9 @@ keep the loop moving.
   never shrinks the regression re-measurement, never rewrites a frozen corpus,
   and never gets encoded into a prompt. Every narrowing it causes (technique
   subset, mode subset) is named in the report.
-- HALT on streamingError; root-cause fix; branch+PR for CI code, hot-reload for
-  Python; resume the SAME session; never push/merge `main`.
+- HALT on streamingError; root-cause fix; branch+PR for CI code, a container
+  restart for Python (there is no hot-reload); resume the SAME session; never
+  push/merge `main`.
 - Delete-bad-message-then-re-ask is the retry primitive — never edit the DB to
   fake a good answer.
 - Evidence-based grading: every `pass` is backed by the verdict JSON / run log.
@@ -695,5 +703,7 @@ keep the loop moving.
   - One key, one edit, one defect per tick. Caps: `max_ticks` (default 20),
     3 attempts per question.
 - The live `scrapalot-chat` checkout is bind-mounted into the container, so it —
-  not the CI-deployed image — is the code and prompts production runs. Check
+  not the CI-deployed image — is what production runs: its code as of the
+  container's last restart, its prompts as of that restart or the last sentinel
+  reload. Check
   `git branch --show-current` before trusting that what you read is what ships.

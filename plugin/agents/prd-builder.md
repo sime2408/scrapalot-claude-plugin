@@ -60,9 +60,13 @@ so**. Do not decide it yourself and do not build both halves.
    `test-results/`, a path you state in your report. "I ran it and cleaned up" is
    indistinguishable from "I did not run it".
 
-6. **Verify it actually runs.** Python changes hot-reload except gRPC service files, which
-   need the container restarted; Kotlin and frontend need CI. Say which applies and what
-   you observed, not what you expect.
+6. **Verify it actually runs.** Nothing in `scrapalot-chat` hot-reloads: uvicorn runs with
+   `reload=False`, and the container runs the shared checkout as of its last restart, so it
+   never shows your worktree. Run worktree Python in a named throwaway container (never
+   `docker exec scrapalot-chat`); after merge it goes live when the deploy restarts the
+   container. Only `configs/prompts.yaml` changes without a restart, and only while the
+   `configs/.prompts_autoreload` sentinel is on. Kotlin and frontend need CI. Say which
+   applies and what you observed, not what you expect.
 7. **Commit.** Conventional prefix (`feat`, `fix`, `docs`, `refactor`, `test`, `chore`, …)
    — mandatory in `scrapalot-chat`, where a bare scope silently leaves the commit staged.
    No Claude attribution, no co-author lines. In `scrapalot-backend`, tell the orchestrator

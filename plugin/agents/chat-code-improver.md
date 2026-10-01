@@ -40,7 +40,7 @@ Systematic code improvement for `/opt/scrapalot/scrapalot-chat/`. Runs ONE phase
 ## CRITICAL RULES
 
 1. **Work inside Docker**: All lint/test commands via `docker exec scrapalot-chat ...`
-2. **Edit files on HOST**: Source at `/opt/scrapalot/scrapalot-chat/src/` → hot-reload
+2. **Edit files on HOST**: Source at `/opt/scrapalot/scrapalot-chat/src/` — no hot-reload (uvicorn runs with `reload=False`): an edit reaches the running service only when the container restarts, which the CI deploy after the push does
 3. **ONE PHASE PER RUN**: Do the requested phase, then STOP
 4. **After each phase**: compile-check → commit → push → report what was done
 5. **Never change behavior**: Refactoring only — same inputs, same outputs

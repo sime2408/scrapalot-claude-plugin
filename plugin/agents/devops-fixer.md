@@ -84,9 +84,11 @@ deploy and steps on the operator. So you work in an ISOLATED clone of origin/mai
     wedged a PR auto-fix run for 63 minutes.
   - Python: `python -m py_compile <changed files>` and/or `python -c "import ..."`
     for a syntax/import sanity check. NOTE: the `scrapalot-chat` container runs the
-    DEPLOYED code, not `$WORK`, so you cannot run the full pytest suite against your
-    clone — rely on py_compile + ruff (`ruff check <files>` if available) and the
-    verifier review; runtime confirmation happens after merge (hot-reload).
+    DEPLOYED code, not `$WORK`, so never test your clone there — rely on py_compile +
+    ruff (`ruff check <files>` if available) and the verifier review, and run any test
+    against `$WORK` in a throwaway container (Guardrails below). Runtime confirmation
+    happens after merge, when the deploy restarts the container: there is no hot-reload
+    (uvicorn runs with `reload=False`).
   - Frontend: you should have returned `too_risky` — visual changes need Chrome.
 - Commit on the branch (NO push):
   `git -C "$WORK" add -A && git -C "$WORK" commit -m "<conventional message>"`.

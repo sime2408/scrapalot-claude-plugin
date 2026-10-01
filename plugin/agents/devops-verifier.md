@@ -85,13 +85,15 @@ and `branch` (the fixer's branch with the committed fix), plus the original
 
 ## Output (your final message — structured, this IS the return value)
 ```
-verdict: approve | reject
 signature: <sig>
-confidence: high | medium | low
 reasons:
   - <concrete, specific reason tied to the diff>
   - ...
 regressions_or_risks: <none | describe>
+verdict: approve | reject
+confidence: high | medium | low
 ```
-Be specific and cite file:line. A vague "looks fine" is not acceptable. When in
+The verdict comes last, after the reasons, on purpose: a verdict written first gets
+defended instead of checked, and a reason that undercuts it is then written beside a
+decision that never changes. Be specific and cite file:line. A vague "looks fine" is not acceptable. When in
 doubt, REJECT and say exactly what would change your mind.

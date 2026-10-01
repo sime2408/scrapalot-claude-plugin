@@ -40,8 +40,11 @@ Prompt-calibration verbs (the --tune loop):
 Every `ask` writes the raw packet stream to runs/<session>__<ts>.jsonl so a failed
 turn can be inspected after the fact.
 
-Auth: admin creds come from env TEST_EMAIL / TEST_PASSWORD, the same pair the
-Playwright suite uses. Both are required — never hard-code secrets.
+Auth: the verbs that log in (login, create-session, ask, del-message) sign in as
+TEST_EMAIL (default admin). The password is the first of: env TEST_PASSWORD, the
+file named by env TEST_PASSWORD_FILE, ~/.scrapalot-admin-password — the order
+scrapalot-chat's tests/_credentials.py uses. It is read only when a verb logs in,
+and never printed. The other verbs need no password.
 """
 import argparse
 import json
@@ -54,12 +57,9 @@ import urllib.request
 
 BASE = os.environ.get("RAG_TEST_BASE", "http://localhost:8080/api/v1")
 USER = os.environ.get("TEST_EMAIL", "admin")
-PW = os.environ.get("TEST_PASSWORD")
-if not PW:
-    # No baked-in default: this driver logs into a real deployment as admin, and
-    # this file is published in a public plugin. Set it in the project's
-    # .claude/settings.local.json env block, which stays off git.
-    sys.exit("TEST_PASSWORD is not set — export it (or add it to .claude/settings.local.json env) before running the driver.")
+# No baked-in password: this driver logs into a real deployment as admin, and this
+# file is published in a public plugin.
+DEFAULT_PASSWORD_FILE = "~/.scrapalot-admin-password"
 HERE = os.path.dirname(os.path.abspath(__file__))
 # Run artefacts belong to the project and must survive a plugin update.
 PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", "/opt/scrapalot")
@@ -86,8 +86,29 @@ def _post(path, body, token=None, timeout=60):
         return json.loads(raw) if raw.strip() else {}
 
 
+def _admin_password():
+    """TEST_PASSWORD, else the file named by TEST_PASSWORD_FILE, else
+    ~/.scrapalot-admin-password. Exits with a message that never includes the value."""
+    password = os.environ.get("TEST_PASSWORD")
+    if password:
+        return password
+    named = os.environ.get("TEST_PASSWORD_FILE")
+    path = os.path.expanduser(named or DEFAULT_PASSWORD_FILE)
+    if not named and not os.path.isfile(path):
+        sys.exit("No admin password is configured. Set TEST_PASSWORD, or TEST_PASSWORD_FILE to a file "
+                 f"that holds it; with neither set, {path} is read, and it does not exist here.")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            password = fh.read().rstrip("\r\n")
+    except OSError as e:
+        sys.exit(f"Cannot read the admin password file {path}: {e.strerror or e}")
+    if not password:
+        sys.exit(f"The admin password file {path} is empty.")
+    return password
+
+
 def login():
-    r = _post("/auth/login", {"username_or_email": USER, "password": PW})
+    r = _post("/auth/login", {"username_or_email": USER, "password": _admin_password()})
     tok = r.get("access_token") or r.get("accessToken")
     if not tok:
         raise SystemExit("login failed: no access_token in response")

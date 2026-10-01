@@ -1,6 +1,6 @@
 ---
 name: ui-component-developer
-description: Use this skill when building or modifying React components for the Scrapalot product UI (chat, notes, research, settings, knowledge, admin) using Radix UI primitives, CVA, TailwindCSS, Framer Motion and TypeScript. Encodes the real design system, the hard-won layout/Radix gotchas, and the Chrome-first verification protocol. NOT for public landing/marketing pages — use scrapalot:landing-design for those.
+description: Use this skill when building or modifying React components for the Scrapalot product UI (chat, notes, research, settings, knowledge, admin) using Radix UI primitives, CVA, TailwindCSS, Framer Motion and TypeScript. Encodes the real design system, the hard-won layout/Radix gotchas, and the Chrome-first verification protocol. NOT for public landing/marketing pages, and not for reviewing or polishing how a screen looks — use scrapalot:design for those.
 ---
 
 # UI Component Developer (Scrapalot product UI)

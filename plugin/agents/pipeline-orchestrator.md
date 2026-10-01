@@ -180,10 +180,16 @@ Use Chrome browser automation to:
 
 ### 2.2 Upload Through API (Alternative)
 ```bash
-# Get auth token
-TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username_or_email":"admin","password":"'"$TEST_PASSWORD"'"}' | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
+# Get auth token. The admin password is the first of TEST_PASSWORD, the file named
+# by TEST_PASSWORD_FILE, and ~/.scrapalot-admin-password (the rag-test driver's
+# order); Python builds the body and pipes it to curl, so it is never echoed and
+# never on a command line.
+TOKEN=$(python3 -c 'import json, os
+pw = os.environ.get("TEST_PASSWORD") or open(os.path.expanduser(os.environ.get("TEST_PASSWORD_FILE") or "~/.scrapalot-admin-password"), encoding="utf-8").read().rstrip("\r\n")
+print(json.dumps({"username_or_email": "admin", "password": pw}))' |
+  curl -s -X POST http://localhost:8080/api/v1/auth/login \
+    -H "Content-Type: application/json" --data-binary @- |
+  python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
 
 # Upload document
 curl -X POST "http://localhost:8080/api/v1/documents/upload" \
@@ -546,7 +552,7 @@ DETECT → FIX NOW → (pipeline keeps running) → ... → PIPELINE DONE → CO
 
 1. **MONITOR continuously** — tail logs in background while pipeline processes
 2. **On first error**: immediately diagnose root cause and edit source code
-3. **DO NOT restart containers** unless absolutely necessary (Python hot-reloads most changes)
+3. **DO NOT restart containers** unless absolutely necessary — but a source fix is not live until one: nothing hot-reloads (uvicorn runs with `reload=False`, the Celery workers have no autoreload), so documents keep running the old code until the restart in step 7c
 4. **Track every fix** — keep a list: `{file, what changed, which documents affected}`
 5. **Track every failed document** — keep a list: `{document_id, filename, error reason, fixable?}`
 6. **Pipeline keeps running** — other documents continue processing while you fix
@@ -586,16 +592,18 @@ Also: `documents.file_size = 0` AND `documents.file_stored = false` is a normal 
 
 ### Common Bug Patterns
 
-| Error Pattern | Root Cause | Fix Location | Hot-reloadable? |
+Nothing in this table hot-reloads: a code fix is live only after the containers that import it restart — the workers for parsing, chunking and extraction code, `scrapalot-chat` for gRPC services.
+
+| Error Pattern | Root Cause | Fix Location | Live after |
 |--------------|------------|-------------|-----------------|
-| `WorkerLostError` | OOM kill during processing | Reduce concurrency/semaphore | No (worker restart) |
-| Orphan Neo4j chunks | Chunk ID not from pgvector `id` (varchar) | `service/graph/node_factory.py` | Yes |
-| Empty embeddings / 0 chunks (no `errorScannedPdfOcrDeferred`) | Parser produced no text but heuristic accepted it (cover-page extraction trap) | `service/document/document_processor_pdf.py::analyze_pdf_document` — tighten with `image_marker_ratio` gate | Yes |
-| Bad markdown structure | pymupdf4llm-layout config | `service/document/document_processor_pdf.py`, `utils/document_utils.py` | Yes |
-| Duplicate entities | Entity dedup logic | `service/graph/entity_pipeline.py` | Yes |
-| Missing chapter_title | Metadata extraction failure | `service/rag/chunking/chunking_enhanced_markdown.py` | Yes |
-| Graph sync failed | `graph_sync_status` stuck | `grpc/services/admin_service.py` | Yes |
-| `MemoryError` in worker | PDF too large for available RAM | Batch processing, reduce chunk size | No (worker restart) |
+| `WorkerLostError` | OOM kill during processing | Reduce concurrency/semaphore | Worker restart |
+| Orphan Neo4j chunks | Chunk ID not from pgvector `id` (varchar) | `service/graph/node_factory.py` | Restart |
+| Empty embeddings / 0 chunks (no `errorScannedPdfOcrDeferred`) | Parser produced no text but heuristic accepted it (cover-page extraction trap) | `service/document/document_processor_pdf.py::analyze_pdf_document` — tighten with `image_marker_ratio` gate | Restart |
+| Bad markdown structure | pymupdf4llm-layout config | `service/document/document_processor_pdf.py`, `utils/document_utils.py` | Restart |
+| Duplicate entities | Entity dedup logic | `service/graph/entity_pipeline.py` | Restart |
+| Missing chapter_title | Metadata extraction failure | `service/rag/chunking/chunking_enhanced_markdown.py` | Restart |
+| Graph sync failed | `graph_sync_status` stuck | `grpc/services/admin_service.py` | Restart |
+| `MemoryError` in worker | PDF too large for available RAM | Batch processing, reduce chunk size | Worker restart |
 | `processor_used = 'markdown_content'` but content is sparse | NOT a parser bug — content was imported as pre-extracted markdown. Bug-route to the import source (Docling export, external ingest), not to the PDF parser. | Import pipeline / external source | Depends on source |
 
 ### CRITICAL Rules
@@ -620,7 +628,9 @@ Also: `documents.file_size = 0` AND `documents.file_stored = false` is a normal 
    git push
    ```
 
-2. **Restart container** if any fix requires it (gRPC changes, worker config)
+2. **Do not restart by hand.** Wait for the deploy run to finish (`gh run list --limit 1`); it restarts
+   `scrapalot-chat` and, when their code changed, the workers. A manual restart inside the deploy window
+   loses the worker's queue consumer.
 
 3. **Generate final report** for the user
 

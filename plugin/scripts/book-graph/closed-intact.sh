@@ -16,6 +16,13 @@
 # an unrecorded book is a book nobody re-checks. A reopened book is skipped until
 # it is recorded again.
 #
+# `record` also saves the book's entity names (book-graph/closed-names/<id>.tsv),
+# and `check` prints, for a changed book, which names it lost or gained and
+# whether each lost name still exists anywhere in the graph. Numbers alone said
+# only "635 -> 634": which entity went, and that it went from EVERY book, took a
+# saved name list that two of seven closed books happened to have. An intact
+# book recorded before names were saved gets its list saved at its next check.
+#
 # The numbers are a tripwire, not a verdict: a legitimate re-extraction or a
 # housekeeping merge moves them too. A difference is READ and explained before the
 # next book starts, and the book is reopened when its graph is no longer what the
@@ -85,6 +92,54 @@ RETURN d, books, entities, count(c), sum(CASE WHEN n > 0 THEN 1 ELSE 0 END), sum
     return out
 
 
+NAMES = root / "book-graph/closed-names"
+
+
+def unquote(value):
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        value = value[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+    return value
+
+
+def names_now(doc):
+    rows = cypher(f"MATCH (b:Book {{document_id: {json.dumps(doc)}}})-[:MENTIONS]->(e:Entity) "
+                  "RETURN e.id + '|~|' + e.name AS x;")
+    out = {}
+    for line in rows:
+        eid, _, name = unquote(line).partition("|~|")
+        out[eid] = name
+    return out
+
+
+def save_names(doc):
+    NAMES.mkdir(parents=True, exist_ok=True)
+    current = names_now(doc)
+    (NAMES / f"{doc}.tsv").write_text("".join(f"{i}\t{n}\n" for i, n in sorted(current.items())), encoding="utf-8")
+    return len(current)
+
+
+def name_diff(doc):
+    path = NAMES / f"{doc}.tsv"
+    if not path.exists():
+        return ["names were not saved when it was recorded — diff a saved export by hand"]
+    saved = dict(line.split("\t", 1) for line in path.read_text(encoding="utf-8").splitlines() if "\t" in line)
+    current = names_now(doc)
+    lost = sorted({saved[i] for i in saved.keys() - current.keys()}, key=str.lower)
+    gained = sorted({current[i] for i in current.keys() - saved.keys()}, key=str.lower)
+    out = []
+    if lost:
+        left = cypher(f"UNWIND {json.dumps([n.lower() for n in lost])} AS n OPTIONAL MATCH (e:Entity) "
+                      "WHERE toLower(e.name) = n WITH n, count(e) AS c RETURN n + '|~|' + toString(c) AS x;")
+        anywhere = dict(unquote(x).rsplit("|~|", 1) for x in left)
+        out.append("lost: " + "; ".join(
+            f"{n} ({'gone from the whole graph' if anywhere.get(n.lower(), '0') == '0' else 'still in the graph, detached from this book'})"
+            for n in lost))
+    if gained:
+        out.append("gained: " + "; ".join(gained))
+    return out or ["no name lost or gained — the change is in the edges"]
+
+
 def append(row):
     fresh = not snap.exists()
     with snap.open("a", encoding="utf-8") as fh:
@@ -116,8 +171,9 @@ if mode in ("record", "reopen"):
                 if was != got:
                     fail(f"refusing_to_record {doc[:8]} changed since it was recorded at {previous[-1][0]} — "
                          "reopen it with the reason and have a critic accept it again first")
+        saved = save_names(doc)
         append([now, doc, "closed", *numbers, text or "closed"])
-        print(f"CLOSED_RECORDED {doc[:8]} " + " ".join(f"{f}={got[f]}" for f in FIELDS))
+        print(f"CLOSED_RECORDED {doc[:8]} " + " ".join(f"{f}={got[f]}" for f in FIELDS) + f" names_saved={saved}")
     else:
         if not text:
             fail("reopen_needs_a_reason", 2)
@@ -148,8 +204,11 @@ if closed:
         if diffs:
             changed += 1
             print(f"    CLOSED_CHANGED {d[:8]} since {closed[d][0]}: " + ", ".join(diffs))
+            for line in name_diff(d):
+                print(f"        {line}")
         else:
-            print(f"    intact {d[:8]} entities={got[d]['entities']} chunk_edges={got[d]['chunk_edges']}")
+            note = "" if (NAMES / f"{d}.tsv").exists() else f" names_saved={save_names(d)}"
+            print(f"    intact {d[:8]} entities={got[d]['entities']} chunk_edges={got[d]['chunk_edges']}{note}")
 for d in reopened:
     print(f"    reopened {d[:8]} since {latest[d][0]}: {latest[d][8]}")
 

@@ -46,7 +46,9 @@ def frontmatter(path: Path) -> dict[str, str]:
         pair = re.match(r"^([A-Za-z_][\w-]*):\s*(.*)$", line)
         if pair:
             key = pair.group(1)
-            fields[key] = pair.group(2).strip().strip('"').strip("'")
+            value = pair.group(2).strip()
+            # A folded or literal block (`description: >`) starts on the next line.
+            fields[key] = "" if value in (">", "|", ">-", "|-", ">+", "|+") else value.strip('"').strip("'")
         elif key and line.startswith(("  ", "\t")):
             fields[key] = (fields[key] + " " + line.strip()).strip()
     return fields

@@ -39,10 +39,17 @@ curl -sf http://localhost:8080 > /dev/null && echo "✓ Gateway" || echo "✗ Ga
 ```
 
 ### 0.2 Auth Verification
+The admin password is the first of `TEST_PASSWORD`, the file named by
+`TEST_PASSWORD_FILE`, and `~/.scrapalot-admin-password` — the order the rag-test
+driver uses. Python builds the request body and pipes it to curl, so the password
+is never echoed and never on a command line.
 ```bash
+python3 -c 'import json, os
+pw = os.environ.get("TEST_PASSWORD") or open(os.path.expanduser(os.environ.get("TEST_PASSWORD_FILE") or "~/.scrapalot-admin-password"), encoding="utf-8").read().rstrip("\r\n")
+print(json.dumps({"username_or_email": "admin", "password": pw}))' |
 curl -s -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username_or_email":"admin","password":"'"$TEST_PASSWORD"'"}' | python3 -c "import sys,json; d=json.load(sys.stdin); print('✓ Auth' if 'access_token' in d else '✗ Auth: '+str(d))"
+  -H "Content-Type: application/json" --data-binary @- |
+python3 -c "import sys,json; d=json.load(sys.stdin); print('✓ Auth' if 'access_token' in d else '✗ Auth: '+str(d))"
 ```
 
 ### 0.3 Seed Data
@@ -153,7 +160,7 @@ test.beforeEach(async ({ page }) => {
     localStorage.setItem('scrapalot_tour_completed', 'true'); // MUST be before navigation
   });
   const basePage = new BasePage(page);
-  await basePage.login(process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!);
+  await basePage.login(TEST_EMAIL, TEST_PASSWORD); // from tests/e2e/utils/test-config (env var, then the password file)
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(1000);
 });

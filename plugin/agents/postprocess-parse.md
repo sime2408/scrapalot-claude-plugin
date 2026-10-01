@@ -960,8 +960,10 @@ Sequence:
 5. Apply, verify, log with `<approved_by>`.
 
 For Cat-E SOURCE-CODE changes (the agent itself patches Python): always
-user-gated. Show diff, ask, commit + push after approval, wait for
-hot-reload OR CI deploy.
+user-gated. Show diff, ask, commit + push after approval, then wait for the
+CI deploy: there is no hot-reload (uvicorn runs with `reload=False`, the
+Celery workers have no autoreload), so the fix is live only once the deploy
+has restarted `scrapalot-chat` — and the workers, when it touches their code.
 
 ---
 

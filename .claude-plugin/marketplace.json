@@ -134,7 +134,7 @@
             {
               "name": "code-improver",
               "invoke": "/scrapalot:code-improver",
-              "description": "| Run the Scrapalot code improvement agent on scrapalot-chat (Python/FastAPI). Phases: 1=Code Style, 2=Architecture (analysis-only), 3=Docker Verify, 4=Audit. (No lint phase — the pre-commit hook runs ruff check + format on every commit.) Usage: /scrapalot:code-improver [1|2|3|4|style|architecture|…"
+              "description": "Run the Scrapalot code improvement agent on scrapalot-chat (Python/FastAPI). Phases: 1=Code Style, 2=Architecture (analysis-only), 3=Docker Verify, 4=Audit. (No lint phase — the pre-commit hook runs ruff check + format on every commit.) Usage: /scrapalot:code-improver [1|2|3|4|style|architecture|do…"
             },
             {
               "name": "comment-hygiene",
@@ -144,7 +144,7 @@
             {
               "name": "competitive-impl",
               "invoke": "/scrapalot:competitive-impl",
-              "description": "> Turn finished research (competitive analyses, PRD backlog categories, partner PRDs) into shipped features. Owns three things the research skills do NOT: (1) the FILE-NAMING LAW — every research artifact has exactly one canonical path, and strays get renamed and relinked instead of quietly lost; (…"
+              "description": "Turn finished research (competitive analyses, PRD backlog categories, partner PRDs) into shipped features. Owns three things the research skills do NOT: (1) the FILE-NAMING LAW — every research artifact has exactly one canonical path, and strays get renamed and relinked instead of quietly lost; (2)…"
             },
             {
               "name": "dead-code-finder",
@@ -157,19 +157,19 @@
               "description": "Hand a self-contained, verifiable task to a cheaper subscription instead of spending Claude Max quota — Codex on a ChatGPT plan, or a flat coding plan (GLM, Qwen and the like) through its Claude Code profile. Use when the work is mechanical and the result can be checked by a command or a diff: bulk…"
             },
             {
+              "name": "design",
+              "invoke": "/scrapalot:design",
+              "description": "Make Scrapalot look better one screen at a time, and prove it: capture, judge, fix, capture again. Two worlds with opposite goals. PUBLIC pages (home, pricing, about, contact, desktop, shop, blog, legal, login, sign-up) should be distinctive and art-directed. The APP (chat, knowledge, notes, settin…"
+            },
+            {
               "name": "humanize-ai",
               "invoke": "/scrapalot:humanize-ai",
-              "description": "> Turn any outbound draft (Discord/DM/email/comment) into something a person will actually read. Removes AI style AND AI conversational behavior: retelling the reader their own message, flattery, process narration, scaffolding sentences, commitments the sender never approved, and replies that carry…"
+              "description": "Turn any outbound draft (Discord/DM/email/comment) into something a person will actually read. Removes AI style AND AI conversational behavior: retelling the reader their own message, flattery, process narration, scaffolding sentences, commitments the sender never approved, and replies that carry n…"
             },
             {
               "name": "i18n-translator",
               "invoke": "/scrapalot:i18n-translator",
               "description": "Use this skill when adding or updating translations for Scrapalot UI. This includes adding new translation keys, translating UI text to multiple languages (English, Croatian, etc.), maintaining translation consistency, and ensuring all language files are kept in sync."
-            },
-            {
-              "name": "landing-design",
-              "invoke": "/scrapalot:landing-design",
-              "description": "Use this skill when designing or building PUBLIC marketing/landing pages for Scrapalot (home, about, contact, buy-license, and src/components/landing). Pushes for art-directed, distinctive, motion-rich pages and breaks the generic-AI-UI defaults — adapted to Scrapalot's real stack (Framer Motion +…"
             },
             {
               "name": "langchain",
@@ -216,77 +216,77 @@
             {
               "name": "backend-code-improver",
               "invoke": "scrapalot:backend-code-improver",
-              "description": "| Systematic code improvement agent for scrapalot-backend (Kotlin / Spring Boot). Runs ONE phase at a time: Code Style → Architecture → Docker Verify → Audit. There is NO separate lint phase — ktlint is a gradle task; a manual lint pass uses the SAFE LOCAL GRADLE pattern below. After each code-chan…"
+              "description": "Systematic code improvement agent for scrapalot-backend (Kotlin / Spring Boot). Runs ONE phase at a time: Code Style → Architecture → Docker Verify → Audit. There is NO separate lint phase — ktlint is a gradle task; a manual lint pass uses the SAFE LOCAL GRADLE pattern below. After each code-changi…"
             },
             {
               "name": "chat-code-improver",
               "invoke": "scrapalot:chat-code-improver",
-              "description": "| Systematic code improvement agent for scrapalot-chat (Python/FastAPI). Runs ONE phase at a time: Code Style → Architecture → Docker Verify → Audit. (There is no lint phase — the pre-commit hook runs ruff check + format on every commit, so the repo is lint-clean by construction.) After each code-c…"
+              "description": "Systematic code improvement agent for scrapalot-chat (Python/FastAPI). Runs ONE phase at a time: Code Style → Architecture → Docker Verify → Audit. (There is no lint phase — the pre-commit hook runs ruff check + format on every commit, so the repo is lint-clean by construction.) After each code-cha…"
             },
             {
               "name": "devops-fixer",
               "invoke": "scrapalot:devops-fixer",
-              "description": "| MAKER agent for the autonomous DevOps fix loop. Given ONE harvested error (signature + sample + source container), it investigates the root cause, decides whether it is a real defect or an expected exception, and — only for real defects — applies a minimal root-cause fix on a feature branch in th…"
+              "description": "MAKER agent for the autonomous DevOps fix loop. Given ONE harvested error (signature + sample + source container), it investigates the root cause, decides whether it is a real defect or an expected exception, and — only for real defects — applies a minimal root-cause fix on a feature branch in the…"
             },
             {
               "name": "devops-verifier",
               "invoke": "scrapalot:devops-verifier",
-              "description": "| READ-ONLY verifier for the autonomous DevOps fix loop. Given a subproject repo and the branch a fixer committed, it independently reviews the diff against the loop's GOAL and the subproject's rules, then votes APPROVE or REJECT. It never edits, commits, pushes, or merges. \"Don't grade your own ho…"
+              "description": "READ-ONLY verifier for the autonomous DevOps fix loop. Given a subproject repo and the branch a fixer committed, it independently reviews the diff against the loop's GOAL and the subproject's rules, then votes APPROVE or REJECT. It never edits, commits, pushes, or merges. \"Don't grade your own home…"
             },
             {
               "name": "pipeline-orchestrator",
               "invoke": "scrapalot:pipeline-orchestrator",
-              "description": "| End-to-end document processing orchestrator with OOM protection. Monitors upload → parse → chunk → embed → Neo4j graph → RAG quality. Tracks logs across ALL containers (gw, backend, chat, workers). Automatically detects OOM kills, disk pressure, and adapts processing. **When to use**: - Document…"
+              "description": "End-to-end document processing orchestrator with OOM protection. Monitors upload → parse → chunk → embed → Neo4j graph → RAG quality. Tracks logs across ALL containers (gw, backend, chat, workers). Automatically detects OOM kills, disk pressure, and adapts processing. **When to use**: - Document up…"
             },
             {
               "name": "postprocess-graph",
               "invoke": "scrapalot:postprocess-graph",
-              "description": "| Graph-only auditor. Runs AFTER `/scrapalot:postprocess-parse` has cleared a book. Validates the Neo4j layer: `Workspace → Collection → Book → Chapter → Section → Chunk` reachability, `(Book)-[:MENTIONS]->(Entity)` count and quality, `(Chunk)-[:REFERENCES]->(Entity)` chunk-level density, `(Entity)…"
+              "description": "Graph-only auditor. Runs AFTER `/scrapalot:postprocess-parse` has cleared a book. Validates the Neo4j layer: `Workspace → Collection → Book → Chapter → Section → Chunk` reachability, `(Book)-[:MENTIONS]->(Entity)` count and quality, `(Chunk)-[:REFERENCES]->(Entity)` chunk-level density, `(Entity)-[…"
             },
             {
               "name": "postprocess-parse",
               "invoke": "scrapalot:postprocess-parse",
-              "description": "| Per-book PARSE auditor. Each invocation EXHAUSTIVELY audits and fixes ONE book's parser / chunker / embedding / document-metadata layer — everything that does NOT touch Neo4j. Validates that pgvector chunks faithfully reflect `documents.content`, that chapter detection produced clean titles, that…"
+              "description": "Per-book PARSE auditor. Each invocation EXHAUSTIVELY audits and fixes ONE book's parser / chunker / embedding / document-metadata layer — everything that does NOT touch Neo4j. Validates that pgvector chunks faithfully reflect `documents.content`, that chapter detection produced clean titles, that d…"
             },
             {
               "name": "prd-auditor",
               "invoke": "scrapalot:prd-auditor",
-              "description": "| READ-ONLY ground-truth checker for the competitive-implementation loop. Given ONE group of proposed features from a research document, it checks each against the actual code in scrapalot-chat / scrapalot-backend / scrapalot-ui / scrapalot-gw and returns an evidence-backed state plus the five deci…"
+              "description": "READ-ONLY ground-truth checker for the competitive-implementation loop. Given ONE group of proposed features from a research document, it checks each against the actual code in scrapalot-chat / scrapalot-backend / scrapalot-ui / scrapalot-gw and returns an evidence-backed state plus the five decisi…"
             },
             {
               "name": "prd-builder",
               "invoke": "scrapalot:prd-builder",
-              "description": "| MAKER agent for the competitive-implementation loop. Given ONE feature the owner has approved, with every branch decision already answered, it implements that feature in an isolated git worktree of the right subproject, writes the integration and end-to-end tests, verifies them, and commits. It d…"
+              "description": "MAKER agent for the competitive-implementation loop. Given ONE feature the owner has approved, with every branch decision already answered, it implements that feature in an isolated git worktree of the right subproject, writes the integration and end-to-end tests, verifies them, and commits. It doe…"
             },
             {
               "name": "prd-cartographer",
               "invoke": "scrapalot:prd-cartographer",
-              "description": "| READ-ONLY mapper for the competitive-implementation loop. Sweeps the whole workspace for research artifacts (competitive analyses, PRD backlog categories, partner and infrastructure PRDs), checks every one against the file-naming law, and returns the open queue, the half-open items, the misnamed…"
+              "description": "READ-ONLY mapper for the competitive-implementation loop. Sweeps the whole workspace for research artifacts (competitive analyses, PRD backlog categories, partner and infrastructure PRDs), checks every one against the file-naming law, and returns the open queue, the half-open items, the misnamed st…"
             },
             {
               "name": "prd-explainer",
               "invoke": "scrapalot:prd-explainer",
-              "description": "| Writes the plain-Croatian decision card for ONE feature, from the auditor's technical findings. It exists because the orchestrator holds the technical context and leaks it: the owner has never read the analysis, the audit or the logs, and cannot decide on codenames, file paths or machine-learning…"
+              "description": "Writes the plain-Croatian decision card for ONE feature, from the auditor's technical findings. It exists because the orchestrator holds the technical context and leaks it: the owner has never read the analysis, the audit or the logs, and cannot decide on codenames, file paths or machine-learning v…"
             },
             {
               "name": "prd-reviewer",
               "invoke": "scrapalot:prd-reviewer",
-              "description": "| READ-ONLY reviewer for the competitive-implementation loop. Given the worktree, the branch a builder committed, and the scope the owner approved, it independently reviews the diff against that scope and the subproject's rules, then votes APPROVE or REJECT. It never edits, commits, pushes or merge…"
+              "description": "READ-ONLY reviewer for the competitive-implementation loop. Given the worktree, the branch a builder committed, and the scope the owner approved, it independently reviews the diff against that scope and the subproject's rules, then votes APPROVE or REJECT. It never edits, commits, pushes or merges.…"
             },
             {
               "name": "prompt-tuner",
               "invoke": "scrapalot:prompt-tuner",
-              "description": "| MAKER agent for the RAG prompt-calibration loop. Given ONE graded defect that the grader attributed to generation (not retrieval), it finds the prompt key responsible, writes the smallest principle-level edit that fixes the defect class, applies it through the driver (atomic, backed up, live-relo…"
+              "description": "MAKER agent for the RAG prompt-calibration loop. Given ONE graded defect that the grader attributed to generation (not retrieval), it finds the prompt key responsible, writes the smallest principle-level edit that fixes the defect class, applies it through the driver (atomic, backed up, live-reload…"
             },
             {
               "name": "rag-tester",
               "invoke": "scrapalot:rag-tester",
-              "description": "| Driver + quality grader for /scrapalot:rag-test. Given ONE question, an active chat session, and the picked book's ids, it asks the question through the real chat path (rag_chat_driver.py → SSE chat/completions), reads back the persisted signals, and grades the answer across the seven RAG-quality…"
+              "description": "Driver + quality grader for /scrapalot:rag-test. Given ONE question, an active chat session, and the picked book's ids, it asks the question through the real chat path (rag_chat_driver.py → SSE chat/completions), reads back the persisted signals, and grades the answer across the seven RAG-quality d…"
             },
             {
               "name": "test-runner",
               "invoke": "scrapalot:test-runner",
-              "description": "| Unified test runner for ALL Scrapalot tests: Python pytest (integration), Playwright E2E (frontend), and Kotlin tests. Replaces separate e2e-integration-tester, e2e-frontend-tester, test-specialist, and ui-test-specialist. **When to use**: - Run integration tests (pytest inside Docker) - Run E2E…"
+              "description": "Unified test runner for ALL Scrapalot tests: Python pytest (integration), Playwright E2E (frontend), and Kotlin tests. Replaces separate e2e-integration-tester, e2e-frontend-tester, test-specialist, and ui-test-specialist. **When to use**: - Run integration tests (pytest inside Docker) - Run E2E fr…"
             }
           ],
           "hooks": [
