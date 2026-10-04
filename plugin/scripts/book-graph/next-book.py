@@ -102,7 +102,6 @@ LEFT JOIN eff e ON e.collection_id = m.collection_id
 WHERE d.deleted_at IS NULL
   AND coalesce(e.graph_tier, 0) = 2
   AND m.collection_name NOT LIKE '.test_%'
-  AND m.owner_user_id <> '08326327-ab04-4cf0-9163-4e1cd4b859df'
 ORDER BY (m.workspace_id::text = :priority) DESC, m.collection_name, d.title
 """
 
